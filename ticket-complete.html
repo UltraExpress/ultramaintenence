@@ -17,9 +17,10 @@
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
+        const MAX_CHUNK_SIZE = 30000;
         
         // Helper function for base64 conversion
-        function blobToBase64(blob) {
+        async function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result);
@@ -28,17 +29,49 @@
             });
         }
 
+        // Split data into chunks and send
+        async function sendChunkedData(data) {
+            const serializedData = JSON.stringify(data);
+            const chunks = [];
+            
+            for (let i = 0; i < serializedData.length; i += MAX_CHUNK_SIZE) {
+                chunks.push(serializedData.slice(i, i + MAX_CHUNK_SIZE));
+            }
+
+            for (let i = 0; i < chunks.length; i++) {
+                const chunkData = {
+                    chunk: chunks[i],
+                    index: i,
+                    total: chunks.length,
+                    isLast: i === chunks.length - 1
+                };
+
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify(chunkData)
+                });
+            }
+        }
+
         async function uploadImage(partId, file) {
             document.getElementById('status').textContent = 'Processing image...';
             try {
-                // Convert image to base64
+                // Convert to base64 and compress
                 const base64Data = await blobToBase64(file);
                 
-                // Send to API
-                await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Photo&newValue=${encodeURIComponent(base64Data)}`,
-                    { mode: 'no-cors' }
-                );
+                // Prepare the data object matching the main app structure
+                const formData = {
+                    partId: partId,
+                    photo: base64Data.split(',')[1],
+                    timestamp: new Date().toISOString()
+                };
+
+                document.getElementById('status').textContent = 'Uploading...';
+                await sendChunkedData(formData);
                 
                 document.getElementById('status').textContent = 'Image uploaded!';
                 setTimeout(fetchItems, 1000);
