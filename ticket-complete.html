@@ -186,7 +186,7 @@
         // Fetch data from Google Sheets
         async function fetchSheetData() {
             try {
-                const response = await fetch('<EXISTING_GET_API_ENDPOINT>', {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbz7blJPKrmYhxCczyop4J6ObxDptjfzfYTiJTRrN-3q4WRIiQbPhoBOj4-MTl6UherQiA/exec?action=getSheetData', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
@@ -283,7 +283,7 @@
                     formData.newVideo = await blobToBase64(videoBlob);
                 }
 
-                await fetch('<EXISTING_POST_API_ENDPOINT>', {
+                await fetch('https://script.google.com/macros/s/AKfycbz7blJPKrmYhxCczyop4J6ObxDptjfzfYTiJTRrN-3q4WRIiQbPhoBOj4-MTl6UherQiA/exec', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
