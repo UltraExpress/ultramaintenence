@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Photo Test</title>
+    <title>Closeout Photo Test</title>
     <style>
         .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
         .preview { max-width: 300px; display: none; margin: 10px 0; }
@@ -21,7 +21,6 @@
     <div id="status">Ready</div>
     <div id="loading" class="loading">Processing...</div>
 
-    <!-- Exactly like maintenance app -->
     <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
     <button type="button" class="media-button" id="photoButton">Take Photo</button>
     <img id="photoPreview" class="preview" alt="Photo preview">
@@ -33,7 +32,6 @@
         const MAX_RETRIES = 3;
         let isUploading = false;
 
-        // Exact same compression function from maintenance app
         async function compressImage(base64String) {
             return new Promise((resolve) => {
                 const img = new Image();
@@ -41,11 +39,9 @@
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    
                     let width = img.width;
                     let height = img.height;
                     const maxSize = 800;
-                    
                     if (width > height && width > maxSize) {
                         height = (height * maxSize) / width;
                         width = maxSize;
@@ -53,7 +49,6 @@
                         width = (width * maxSize) / height;
                         height = maxSize;
                     }
-                    
                     canvas.width = width;
                     canvas.height = height;
                     ctx.drawImage(img, 0, 0, width, height);
@@ -62,12 +57,10 @@
             });
         }
 
-        // Exact same photo button handler from maintenance app
         document.getElementById('photoButton').addEventListener('click', function() {
             document.getElementById('photoInput').click();
         });
 
-        // Exact same photo input handler from maintenance app
         document.getElementById('photoInput').addEventListener('change', function(e) {
             if (e.target.files && e.target.files[0]) {
                 const reader = new FileReader();
@@ -75,13 +68,12 @@
                     photoData = e.target.result;
                     document.getElementById('photoPreview').src = photoData;
                     document.getElementById('photoPreview').style.display = 'block';
-                    uploadPhoto();  // Auto upload when photo is taken
+                    uploadPhoto();
                 };
                 reader.readAsDataURL(e.target.files[0]);
             }
         });
 
-        // Convert FormData to URL-encoded string exactly like maintenance app
         async function uploadPhoto() {
             if (!photoData) return;
             
@@ -91,15 +83,13 @@
             isUploading = true;
 
             try {
-                // Compress the photo
                 const compressedPhoto = await compressImage(photoData);
                 status.textContent = 'Uploading...';
 
-                // Create object exactly like maintenance app
                 const data = {
-                    location: "TEST",
+                    location: "CLOSEOUT",  // Changed to CLOSEOUT
                     name: "TEST",
-                    partId: "19_rmdp1",  // Using existing part ID
+                    partId: "19_rmdp1",
                     partName: "TEST PART",
                     completePhoto: compressedPhoto.split(',')[1],
                     timestamp: new Date().toISOString()
@@ -109,12 +99,10 @@
                 const chunkSize = 30000;
                 const serializedData = JSON.stringify(data);
 
-                // Split into chunks exactly like maintenance app
                 for (let i = 0; i < serializedData.length; i += chunkSize) {
                     chunks.push(serializedData.slice(i, i + chunkSize));
                 }
 
-                // Send each chunk with retry logic exactly like maintenance app
                 for (let i = 0; i < chunks.length; i++) {
                     const chunkData = {
                         chunk: chunks[i],
@@ -128,9 +116,9 @@
                         try {
                             await fetch(API_URL, {
                                 method: 'POST',
-                                mode: 'no-cors',  // Important!
+                                mode: 'no-cors',
                                 headers: {
-                                    'Content-Type': 'text/plain',  // Important!
+                                    'Content-Type': 'text/plain',
                                 },
                                 body: JSON.stringify(chunkData)
                             });
@@ -159,7 +147,6 @@
             }
         }
 
-        // Leave page warning from maintenance app
         window.addEventListener('beforeunload', function(e) {
             if (isUploading) {
                 e.preventDefault();
