@@ -37,7 +37,7 @@
             cursor: pointer;
             width: 100%;
         }
-        .status {
+        #status {
             margin-top: 20px;
             padding: 10px;
             border-radius: 5px;
@@ -48,7 +48,7 @@
 </head>
 <body>
     <div class="container">
-        <h2>Complete Notes Update Test - v1.6</h2>
+        <h2>Complete Notes Test - v1.0</h2>
         
         <div>
             <label>Select Part ID:</label>
@@ -64,41 +64,38 @@
             <input type="text" id="completeNotes" value="Test note">
         </div>
 
-        <button onclick="submitNoteUpdate()">Update Complete Notes</button>
-        <div id="statusMsg" class="status"></div>
+        <button onclick="submitUpdate()">Update Complete Notes</button>
+        <div id="status"></div>
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        
-        async function submitNoteUpdate() {
-            const statusDiv = document.getElementById('statusMsg');
-            statusDiv.style.display = 'block';
-            statusDiv.textContent = 'Submitting...';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwqJaicEAMhIai2TVMn8725-Jy9ainoIzafJuFqCGhnlMJp4xOPBqhH8qUzpm-CCwYr9g/exec';
+
+        async function submitUpdate() {
+            const status = document.getElementById('status');
+            status.style.display = 'block';
+            status.textContent = 'Submitting...';
 
             const data = {
-                action: 'updateStatus',
                 partId: document.getElementById('partId').value,
-                columnName: 'Complete Notes',
-                newValue: document.getElementById('completeNotes').value
+                completeNotes: document.getElementById('completeNotes').value
             };
 
             try {
                 console.log('Sending data:', data);
-                
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    mode: 'no-cors',  // Important for Google Apps Script
                     headers: {
-                        'Content-Type': 'text/plain',
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(data)
                 });
 
-                statusDiv.textContent = 'Update sent! Check sheet.';
-                console.log('Response:', response);
+                const result = await response.json();
+                status.textContent = 'Update sent! Check sheet.';
+                console.log('Response:', result);
             } catch (error) {
-                statusDiv.textContent = 'Error: ' + error.message;
+                status.textContent = 'Error: ' + error.message;
                 console.error('Error:', error);
             }
         }
