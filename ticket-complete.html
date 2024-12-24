@@ -278,26 +278,34 @@
             loading.style.display = 'block';
 
             try {
-                const formData = new FormData();
-                formData.append('partId', partId);
-                formData.append('completeNotes', notes);
-                formData.append('status', 'Awaiting Approval');
+                // Construct the data object
+                const data = {
+                    partId: partId,
+                    completeNotes: notes,
+                    status: 'Awaiting Approval',
+                    timestamp: new Date().toISOString()
+                };
 
+                // Handle photo
                 if (photoData) {
                     const compressedPhoto = await compressImage(photoData);
-                    formData.append('completePhoto', compressedPhoto.split(',')[1]);
+                    data.completePhoto = compressedPhoto.split(',')[1];
                 }
 
+                // Handle video
                 if (videoBlob) {
                     const compressedVideo = await compressVideo(videoBlob);
                     const videoBase64 = await blobToBase64(compressedVideo);
-                    formData.append('completeVideo', videoBase64.split(',')[1]);
+                    data.completeVideo = videoBase64.split(',')[1];
                 }
 
-                const data = {};
-                for (let [key, value] of formData.entries()) {
-                    data[key] = value;
-                }
+                // Update columns F (Status), O (Complete Notes), P (Complete Photo), Q (Complete Video)
+                data.columnMappings = {
+                    'status': 'F',
+                    'completeNotes': 'O',
+                    'completePhoto': 'P',
+                    'completeVideo': 'Q'
+                };
 
                 await sendInChunks(data, loading);
 
@@ -423,7 +431,8 @@
                     chunk: chunks[i],
                     index: i,
                     total: chunks.length,
-                    isLast: i === chunks.length - 1
+                    isLast: i === chunks.length - 1,
+                    action: 'updateCloseout'  // Specify the action for the Google Apps Script
                 };
 
                 let retryCount = 0;
@@ -438,12 +447,14 @@
                             body: JSON.stringify(chunkData)
                         });
 
-                        if (response) {
-                            const progress = Math.round(((i + 1) / chunks.length) * 100);
-                            loadingElement.textContent = `Uploading... ${progress}%`;
-                            break;
-                        }
-                        throw new Error('Upload failed');
+                        // With no-cors mode, we can't read the response
+                        // but if we get here without an error, consider it successful
+                        const progress = Math.round(((i + 1) / chunks.length) * 100);
+                        loadingElement.textContent = `Uploading... ${progress}%`;
+                        
+                        // Add a small delay between chunks
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        break;
                     } catch (error) {
                         retryCount++;
                         if (retryCount === MAX_RETRIES) {
