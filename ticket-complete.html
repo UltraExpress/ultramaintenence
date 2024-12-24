@@ -64,6 +64,7 @@
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
+        const MAX_RETRIES = 3;
         let photoData = null;
 
         // Image compression function - same as maintenance app
@@ -95,6 +96,55 @@
             });
         }
 
+        async function uploadWithChunks(data) {
+            const chunkSize = 30000;
+            const serializedData = JSON.stringify(data);
+            const chunks = [];
+
+            // Split into chunks
+            for (let i = 0; i < serializedData.length; i += chunkSize) {
+                chunks.push(serializedData.slice(i, i + chunkSize));
+            }
+
+            // Upload each chunk with retry logic
+            for (let i = 0; i < chunks.length; i++) {
+                const chunkData = {
+                    chunk: chunks[i],
+                    index: i,
+                    total: chunks.length,
+                    isLast: i === chunks.length - 1
+                };
+
+                let retryCount = 0;
+                while (retryCount < MAX_RETRIES) {
+                    try {
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: {
+                                'Content-Type': 'text/plain',
+                            },
+                            body: JSON.stringify(chunkData)
+                        });
+
+                        if (response) {
+                            const progress = Math.round(((i + 1) / chunks.length) * 100);
+                            document.getElementById('loading').textContent = `Uploading... ${progress}%`;
+                            break;
+                        }
+                        throw new Error('Upload failed');
+                    } catch (error) {
+                        retryCount++;
+                        if (retryCount === MAX_RETRIES) {
+                            throw new Error(`Failed to upload chunk ${i + 1}/${chunks.length} after ${MAX_RETRIES} attempts`);
+                        }
+                        document.getElementById('loading').textContent = `Retry ${retryCount}/${MAX_RETRIES}...`;
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                }
+            }
+        }
+
         async function handlePhotoUpload(partId, previewId) {
             const input = document.createElement('input');
             input.type = 'file';
@@ -122,33 +172,27 @@
                                 const compressedPhoto = await compressImage(e.target.result);
                                 status.textContent = 'Uploading...';
 
-                                // Upload to Drive
-                                const response = await fetch(API_URL, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                        partId: partId,
-                                        completePhoto: compressedPhoto.split(',')[1]
-                                    })
-                                });
+                                // Prepare data for chunked upload
+                                const data = {
+                                    partId: partId,
+                                    completePhoto: compressedPhoto.split(',')[1]
+                                };
 
-                                if (!response.ok) {
-                                    throw new Error('Upload failed');
-                                }
+                                // Upload using chunking
+                                await uploadWithChunks(data);
 
                                 status.textContent = 'Photo uploaded successfully!';
                                 setTimeout(fetchItems, 1000);
                             } catch (error) {
                                 status.textContent = 'Error: ' + error.message;
                                 preview.style.display = 'none';
+                            } finally {
+                                loading.style.display = 'none';
                             }
                         };
                         reader.readAsDataURL(e.target.files[0]);
                     } catch (error) {
                         status.textContent = 'Error: ' + error.message;
-                    } finally {
                         loading.style.display = 'none';
                     }
                 }
