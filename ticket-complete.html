@@ -1,17 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sheet Test</title>
+    <title>Photo Upload Test</title>
     <style>
         .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
         .status { margin: 10px 0; color: blue; }
-        select { margin: 5px 0; padding: 5px; }
-        .preview { max-width: 200px; margin: 5px 0; display: none; }
-        .preview.show { display: block; }
     </style>
 </head>
 <body>
-    <h2>Sheet Communication Test</h2>
+    <h2>Photo Upload Test</h2>
     <div id="statusMessage" class="status">Ready</div>
     <div id="itemsList"></div>
 
@@ -29,34 +26,21 @@
 
         async function uploadImage(partId, file) {
             const status = document.getElementById('statusMessage');
-            status.textContent = 'Processing image...';
-            
             try {
-                // Create the data structure exactly like the main app
+                status.textContent = 'Converting image...';
                 const base64Data = await blobToBase64(file);
-                const formData = {
-                    partId: partId,
-                    location: 'TEST',
-                    name: 'TEST',
-                    timestamp: new Date().toISOString(),
-                    photoBase64: base64Data.split(',')[1]
-                };
+                
+                status.textContent = 'Sending to server...';
+                const formData = new FormData();
+                formData.append('partId', partId);
+                formData.append('photo', base64Data.split(',')[1]);
+                formData.append('timestamp', new Date().toISOString());
 
-                // Send the update to update Complete Photo
-                await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Photo&newValue=UPLOADING`,
-                    { mode: 'no-cors' }
-                );
-
-                // Now send the actual photo
-                await fetch(API_URL, {
+                const response = await fetch(API_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'text/plain',
-                    },
                     body: JSON.stringify({
-                        chunk: JSON.stringify(formData),
+                        chunk: JSON.stringify(Object.fromEntries(formData)),
                         index: 0,
                         total: 1,
                         isLast: true
@@ -64,7 +48,7 @@
                 });
 
                 status.textContent = 'Upload complete - refreshing...';
-                setTimeout(fetchItems, 2000); // Give it time to process
+                setTimeout(fetchItems, 2000);
             } catch (error) {
                 status.textContent = 'Upload Error: ' + error.message;
                 console.error('Error:', error);
@@ -74,40 +58,7 @@
         function handleImageSelect(partId, input) {
             const file = input.files[0];
             if (file) {
-                const preview = document.getElementById(`preview-${partId}`);
-                preview.src = URL.createObjectURL(file);
-                preview.classList.add('show');
                 uploadImage(partId, file);
-            }
-        }
-
-        async function testWrite(partId) {
-            const status = document.getElementById('statusMessage');
-            status.textContent = 'Writing test note...';
-            try {
-                await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Notes&newValue=TEST+NOTE`,
-                    { mode: 'no-cors' }
-                );
-                status.textContent = 'Write successful!';
-                setTimeout(fetchItems, 1000);
-            } catch (error) {
-                status.textContent = 'Write Error: ' + error.message;
-            }
-        }
-
-        async function updateStatus(partId, newStatus) {
-            const status = document.getElementById('statusMessage');
-            status.textContent = 'Updating status...';
-            try {
-                await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Status&newValue=${newStatus}`,
-                    { mode: 'no-cors' }
-                );
-                status.textContent = 'Status updated!';
-                setTimeout(fetchItems, 1000);
-            } catch (error) {
-                status.textContent = 'Update Error: ' + error.message;
             }
         }
 
@@ -123,39 +74,22 @@
                     document.getElementById('itemsList').innerHTML = items.map((item, index) => {
                         const partName = item["Part Name"] || '';
                         const partId = item["Part ID"] || '';
-                        const currentStatus = item["Status"] || '';
-                        const notes = item["Complete Notes"] || 'None';
-                        const photo = item["Complete Photo"] || '';
+                        const photo = item["Complete Photo"] || 'None';
                         
                         return `
                             <div class="item">
                                 <strong>${partName}</strong><br>
                                 ID: ${partId}<br>
-                                <label for="status-${index}">Status:</label>
-                                <select id="status-${index}" name="status-${index}" 
-                                        onchange="updateStatus('${partId}', this.value)">
-                                    <option value="Needs Work" ${currentStatus === 'Needs Work' ? 'selected' : ''}>Needs Work</option>
-                                    <option value="Parts On Order" ${currentStatus === 'Parts On Order' ? 'selected' : ''}>Parts On Order</option>
-                                    <option value="In Progress" ${currentStatus === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                                    <option value="Complete" ${currentStatus === 'Complete' ? 'selected' : ''}>Complete</option>
-                                </select><br>
-                                Complete Notes: ${notes}<br>
-                                Complete Photo: ${photo || 'None'}<br>
-                                <button id="note-btn-${index}" onclick="testWrite('${partId}')">Add Test Note</button><br>
-                                <div>
-                                    <input type="file" 
-                                           id="file-${index}"
-                                           name="file-${index}"
-                                           accept="image/*" 
-                                           onchange="handleImageSelect('${partId}', this)"
-                                           style="margin: 10px 0;">
-                                    <img id="preview-${partId}" class="preview ${photo ? 'show' : ''}" 
-                                         src="${photo}" alt="Preview">
-                                </div>
+                                Complete Photo: ${photo}<br>
+                                <input type="file" 
+                                       id="file-${index}"
+                                       name="file-${index}"
+                                       accept="image/*" 
+                                       onchange="handleImageSelect('${partId}', this)">
                             </div>
                         `;
                     }).join('');
-                    status.textContent = 'Data loaded!';
+                    status.textContent = 'Ready';
                 }
             } catch (error) {
                 status.textContent = 'Load Error: ' + error.message;
