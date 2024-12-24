@@ -1,266 +1,139 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Sheet Test</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
+const CHUNK_PROPERTY_PREFIX = 'CHUNK_';
+const MAX_CHUNK_AGE_MS = 5 * 60 * 1000; // 5 minutes
+
+function doPost(e) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400'
+  };
+
+  try {
+    const chunkData = JSON.parse(e.postData.contents);
+    const { chunk, index, total, isLast } = chunkData;
+    
+    // Store the chunk
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const chunkKey = `${CHUNK_PROPERTY_PREFIX}${index}`;
+    scriptProperties.setProperty(chunkKey, chunk);
+    
+    // If this is the last chunk, process the complete data
+    if (isLast) {
+      // Combine all chunks
+      let completeData = '';
+      for (let i = 0; i < total; i++) {
+        const currentChunk = scriptProperties.getProperty(`${CHUNK_PROPERTY_PREFIX}${i}`);
+        if (!currentChunk) {
+          throw new Error(`Missing chunk ${i}`);
         }
-        .item { 
-            margin: 10px 0; 
-            padding: 10px; 
-            border: 1px solid #ccc; 
-            border-radius: 4px;
+        completeData += currentChunk;
+        
+        // Clean up the chunk
+        scriptProperties.deleteProperty(`${CHUNK_PROPERTY_PREFIX}${i}`);
+      }
+      
+      // Parse the complete data
+      const data = JSON.parse(completeData);
+      
+      // Get the spreadsheet
+      const ss = SpreadsheetApp.openById('1vqHbH2XWmZUR7fEvqAJleDRgVCSPEfynDjDLhVzWybw');
+      const sheet = ss.getSheetByName('Sheet1');
+
+      // Find the row with matching partId
+      const dataRange = sheet.getDataRange();
+      const values = dataRange.getValues();
+      const partIdColIndex = 3; // Column D (0-based)
+      const completePhotoColIndex = 15; // Column P (0-based)
+      const locationColIndex = 1; // Column B (0-based)
+      const partNameColIndex = 4; // Column E (0-based)
+
+      let rowIndex = -1;
+      for (let i = 0; i < values.length; i++) {
+        if (values[i][partIdColIndex] === data.partId) {
+          rowIndex = i + 1;
+          break;
         }
-        .status { 
-            margin: 10px 0; 
-            padding: 10px;
-            background: #f0f0f0;
-            border-radius: 4px;
-        }
-        select { 
-            margin: 5px 0; 
-            padding: 5px; 
-            width: 200px;
-        }
-        .preview {
-            max-width: 300px;
-            display: none;
-            margin: 10px 0;
-            border-radius: 4px;
-        }
-        .loading {
-            display: none;
-            color: #666;
-            font-style: italic;
-        }
-        .media-button {
-            background: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px 0;
-        }
-        .media-button:hover {
-            background: #45a049;
-        }
-        .photo-preview {
-            max-width: 200px;
-            margin: 10px 0;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <h2>Sheet Communication Test</h2>
-    <div id="status" class="status">Ready</div>
-    <div class="loading" id="loading">Processing...</div>
-    <div id="items"></div>
+      }
 
-    <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        const MAX_RETRIES = 3;
-        let photoData = null;
+      if (rowIndex === -1) {
+        throw new Error('Part ID not found');
+      }
 
-        // Image compression function - same as maintenance app
-        async function compressImage(base64String) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.src = base64String;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    let width = img.width;
-                    let height = img.height;
-                    const maxSize = 800;
-                    
-                    if (width > height && width > maxSize) {
-                        height = (height * maxSize) / width;
-                        width = maxSize;
-                    } else if (height > maxSize) {
-                        width = (width * maxSize) / height;
-                        height = maxSize;
-                    }
-                    
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
-                };
-            });
-        }
+      // Get location and part name for folder structure
+      const location = values[rowIndex - 1][locationColIndex];
+      const partName = values[rowIndex - 1][partNameColIndex];
 
-        async function uploadWithChunks(data) {
-            const chunkSize = 30000;
-            const serializedData = JSON.stringify(data);
-            const chunks = [];
+      // Create folders structure - same as maintenance app
+      const mainFolderName = 'ULTRA Wash Maintenance Files';
+      const mainFolder = getOrCreateFolder(mainFolderName);
+      const locationFolder = getOrCreateFolder(location, mainFolder);
+      const dateFolder = getOrCreateFolder(
+        Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+        locationFolder
+      );
 
-            // Split into chunks
-            for (let i = 0; i < serializedData.length; i += chunkSize) {
-                chunks.push(serializedData.slice(i, i + chunkSize));
-            }
+      // Process the photo
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      let completePhotoUrl = '';
 
-            // Upload each chunk with retry logic
-            for (let i = 0; i < chunks.length; i++) {
-                const chunkData = {
-                    chunk: chunks[i],
-                    index: i,
-                    total: chunks.length,
-                    isLast: i === chunks.length - 1
-                };
+      if (data.completePhoto) {
+        const photoBlob = Utilities.newBlob(
+          Utilities.base64Decode(data.completePhoto),
+          'image/jpeg',
+          `${location}_${partName}_complete_${timestamp}.jpg`
+        );
+        const photoFile = dateFolder.createFile(photoBlob);
+        completePhotoUrl = photoFile.getUrl();
 
-                let retryCount = 0;
-                while (retryCount < MAX_RETRIES) {
-                    try {
-                        const response = await fetch(API_URL, {
-                            method: 'POST',
-                            mode: 'no-cors',
-                            headers: {
-                                'Content-Type': 'text/plain',
-                            },
-                            body: JSON.stringify(chunkData)
-                        });
+        // Update the complete photo URL in column P
+        sheet.getRange(rowIndex, completePhotoColIndex + 1).setValue(completePhotoUrl);
+      }
 
-                        if (response) {
-                            const progress = Math.round(((i + 1) / chunks.length) * 100);
-                            document.getElementById('loading').textContent = `Uploading... ${progress}%`;
-                            break;
-                        }
-                        throw new Error('Upload failed');
-                    } catch (error) {
-                        retryCount++;
-                        if (retryCount === MAX_RETRIES) {
-                            throw new Error(`Failed to upload chunk ${i + 1}/${chunks.length} after ${MAX_RETRIES} attempts`);
-                        }
-                        document.getElementById('loading').textContent = `Retry ${retryCount}/${MAX_RETRIES}...`;
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                }
-            }
-        }
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'success',
+        message: 'Complete photo updated successfully',
+        photoUrl: completePhotoUrl
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // If not the last chunk, return success
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'success',
+      message: `Chunk ${index + 1}/${total} received`
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    Logger.log('Error in doPost: ' + error.toString());
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: error.toString()
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
-        async function handlePhotoUpload(partId, previewId) {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.capture = 'environment';
+// Helper function for creating folders - same as maintenance app
+function getOrCreateFolder(folderName, parentFolder = DriveApp) {
+  const folderIter = parentFolder.getFoldersByName(folderName);
+  
+  if (folderIter.hasNext()) {
+    return folderIter.next();
+  }
+  
+  return parentFolder.createFolder(folderName);
+}
 
-            input.onchange = async function(e) {
-                if (e.target.files && e.target.files[0]) {
-                    const loading = document.getElementById('loading');
-                    const status = document.getElementById('status');
-                    const preview = document.getElementById(previewId);
-                    
-                    loading.style.display = 'block';
-                    status.textContent = 'Compressing image...';
-                    
-                    try {
-                        const reader = new FileReader();
-                        reader.onload = async function(e) {
-                            try {
-                                // Show preview
-                                preview.src = e.target.result;
-                                preview.style.display = 'block';
-
-                                // Compress image
-                                const compressedPhoto = await compressImage(e.target.result);
-                                status.textContent = 'Uploading...';
-
-                                // Prepare data for chunked upload
-                                const data = {
-                                    partId: partId,
-                                    completePhoto: compressedPhoto.split(',')[1]
-                                };
-
-                                // Upload using chunking
-                                await uploadWithChunks(data);
-
-                                status.textContent = 'Photo uploaded successfully!';
-                                setTimeout(fetchItems, 1000);
-                            } catch (error) {
-                                status.textContent = 'Error: ' + error.message;
-                                preview.style.display = 'none';
-                            } finally {
-                                loading.style.display = 'none';
-                            }
-                        };
-                        reader.readAsDataURL(e.target.files[0]);
-                    } catch (error) {
-                        status.textContent = 'Error: ' + error.message;
-                        loading.style.display = 'none';
-                    }
-                }
-            };
-
-            input.click();
-        }
-
-        async function updateStatus(partId, newStatus) {
-            document.getElementById('status').textContent = 'Updating status...';
-            try {
-                await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Status&newValue=${newStatus}`,
-                    { mode: 'no-cors' }
-                );
-                document.getElementById('status').textContent = 'Status updated!';
-                setTimeout(fetchItems, 1000);
-            } catch (error) {
-                document.getElementById('status').textContent = 'Update Error: ' + error.message;
-            }
-        }
-
-        async function fetchItems() {
-            document.getElementById('status').textContent = 'Loading...';
-            try {
-                const response = await fetch(`${API_URL}?action=getAllData`);
-                const result = await response.json();
-                
-                if (result.status === "success" && Array.isArray(result.data)) {
-                    const items = result.data.slice(0, 3);
-                    const itemsHtml = items.map((item, index) => {
-                        const partName = item["Part Name"] || '';
-                        const partId = item["Part ID"] || '';
-                        const status = item["Status"] || '';
-                        const completePhoto = item["Complete Photo"] || '';
-                        const previewId = `preview-${index}`;
-                        
-                        return `
-                            <div class="item">
-                                <strong>${partName}</strong><br>
-                                ID: ${partId}<br>
-                                Status: 
-                                <select onchange="updateStatus('${partId}', this.value)">
-                                    <option value="Needs Work" ${status === 'Needs Work' ? 'selected' : ''}>Needs Work</option>
-                                    <option value="Parts On Order" ${status === 'Parts On Order' ? 'selected' : ''}>Parts On Order</option>
-                                    <option value="In Progress" ${status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                                    <option value="Complete" ${status === 'Complete' ? 'selected' : ''}>Complete</option>
-                                </select><br>
-                                ${completePhoto ? `Current Complete Photo: <a href="${completePhoto}" target="_blank">View</a><br>` : ''}
-                                <img id="${previewId}" class="photo-preview" alt="Preview">
-                                <button class="media-button" onclick="handlePhotoUpload('${partId}', '${previewId}')">
-                                    Upload Complete Photo
-                                </button>
-                            </div>
-                        `;
-                    }).join('');
-                    
-                    document.getElementById('items').innerHTML = itemsHtml;
-                    document.getElementById('status').textContent = 'Data loaded!';
-                }
-            } catch (error) {
-                document.getElementById('status').textContent = 'Load Error: ' + error.message;
-                console.error('Error:', error);
-            }
-        }
-
-        // Initial load
-        fetchItems();
-    </script>
-</body>
-</html>
+// Setup trigger to clean up old chunks
+function cleanupOldChunks() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const allProperties = scriptProperties.getProperties();
+  
+  for (const key in allProperties) {
+    if (key.startsWith(CHUNK_PROPERTY_PREFIX)) {
+      scriptProperties.deleteProperty(key);
+    }
+  }
+}
