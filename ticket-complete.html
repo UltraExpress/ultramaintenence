@@ -1,159 +1,72 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Closeout Photo Test</title>
+    <title>Column P Test</title>
     <style>
+        body { font-family: Arial; padding: 20px; }
         .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
-        .preview { max-width: 300px; display: none; margin: 10px 0; }
-        .loading { display: none; color: #666; }
-        .media-button {
-            background: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px 0;
-        }
+        .status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        button { padding: 5px 10px; }
     </style>
 </head>
 <body>
-    <div id="status">Ready</div>
-    <div id="loading" class="loading">Processing...</div>
-
-    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
-    <button type="button" class="media-button" id="photoButton">Take Photo</button>
-    <img id="photoPreview" class="preview" alt="Photo preview">
+    <h2>Column P Write Test</h2>
+    <div id="status" class="status">Ready</div>
+    <div id="items"></div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        let photoData = null;
-        let uploadProgress = 0;
-        const MAX_RETRIES = 3;
-        let isUploading = false;
 
-        async function compressImage(base64String) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.src = base64String;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    let width = img.width;
-                    let height = img.height;
-                    const maxSize = 800;
-                    if (width > height && width > maxSize) {
-                        height = (height * maxSize) / width;
-                        width = maxSize;
-                    } else if (height > maxSize) {
-                        width = (width * maxSize) / height;
-                        height = maxSize;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
-                };
-            });
-        }
-
-        document.getElementById('photoButton').addEventListener('click', function() {
-            document.getElementById('photoInput').click();
-        });
-
-        document.getElementById('photoInput').addEventListener('change', function(e) {
-            if (e.target.files && e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    photoData = e.target.result;
-                    document.getElementById('photoPreview').src = photoData;
-                    document.getElementById('photoPreview').style.display = 'block';
-                    uploadPhoto();
-                };
-                reader.readAsDataURL(e.target.files[0]);
-            }
-        });
-
-        async function uploadPhoto() {
-            if (!photoData) return;
-            
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-            loading.style.display = 'block';
-            isUploading = true;
-
+        async function writeToColumnP(partId) {
+            document.getElementById('status').textContent = 'Writing to column P...';
             try {
-                const compressedPhoto = await compressImage(photoData);
-                status.textContent = 'Uploading...';
-
-                const data = {
-                    location: "CLOSEOUT",  // Changed to CLOSEOUT
-                    name: "TEST",
-                    partId: "19_rmdp1",
-                    partName: "TEST PART",
-                    completePhoto: compressedPhoto.split(',')[1],
-                    timestamp: new Date().toISOString()
-                };
-
-                const chunks = [];
-                const chunkSize = 30000;
-                const serializedData = JSON.stringify(data);
-
-                for (let i = 0; i < serializedData.length; i += chunkSize) {
-                    chunks.push(serializedData.slice(i, i + chunkSize));
-                }
-
-                for (let i = 0; i < chunks.length; i++) {
-                    const chunkData = {
-                        chunk: chunks[i],
-                        index: i,
-                        total: chunks.length,
-                        isLast: i === chunks.length - 1
-                    };
-
-                    let retryCount = 0;
-                    while (retryCount < MAX_RETRIES) {
-                        try {
-                            await fetch(API_URL, {
-                                method: 'POST',
-                                mode: 'no-cors',
-                                headers: {
-                                    'Content-Type': 'text/plain',
-                                },
-                                body: JSON.stringify(chunkData)
-                            });
-
-                            uploadProgress = Math.round(((i + 1) / chunks.length) * 100);
-                            loading.textContent = `Uploading... ${uploadProgress}%`;
-                            break;
-                        } catch (error) {
-                            retryCount++;
-                            if (retryCount === MAX_RETRIES) {
-                                throw new Error(`Failed to upload chunk ${i + 1}/${chunks.length}`);
-                            }
-                            loading.textContent = `Retry ${retryCount}/${MAX_RETRIES}...`;
-                            await new Promise(resolve => setTimeout(resolve, 2000));
-                        }
-                    }
-                }
-
-                status.textContent = 'Upload complete!';
+                await fetch(
+                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Photo&newValue=TEST_URL_${new Date().getTime()}`,
+                    { mode: 'no-cors' }
+                );
+                document.getElementById('status').textContent = 'Write successful!';
+                setTimeout(fetchItems, 1000);
             } catch (error) {
-                status.textContent = 'Error: ' + error.message;
-                console.error('Upload error:', error);
-            } finally {
-                loading.style.display = 'none';
-                isUploading = false;
+                document.getElementById('status').textContent = 'Write Error: ' + error.message;
             }
         }
 
-        window.addEventListener('beforeunload', function(e) {
-            if (isUploading) {
-                e.preventDefault();
-                e.returnValue = 'Upload in progress - leaving this page will cancel the upload. Are you sure?';
-                return e.returnValue;
+        async function fetchItems() {
+            document.getElementById('status').textContent = 'Loading...';
+            try {
+                const response = await fetch(`${API_URL}?action=getAllData`);
+                const result = await response.json();
+                
+                if (result.status === "success" && Array.isArray(result.data)) {
+                    const items = result.data.slice(0, 3);
+                    const itemsHtml = items.map(item => {
+                        const partName = item["Part Name"] || '';
+                        const partId = item["Part ID"] || '';
+                        const completePhoto = item["Complete Photo"] || 'None';
+                        
+                        return `
+                            <div class="item">
+                                <strong>${partName}</strong><br>
+                                ID: ${partId}<br>
+                                Current Complete Photo value: ${completePhoto}<br>
+                                <button onclick="writeToColumnP('${partId}')">
+                                    Write Test Value to Column P
+                                </button>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    document.getElementById('items').innerHTML = itemsHtml;
+                    document.getElementById('status').textContent = 'Ready';
+                }
+            } catch (error) {
+                document.getElementById('status').textContent = 'Load Error: ' + error.message;
+                console.error('Error:', error);
             }
-        });
+        }
+
+        // Initial load
+        fetchItems();
     </script>
 </body>
 </html>
