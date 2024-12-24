@@ -1,301 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Complete Photo Upload Test</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Column P Test</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .item {
-            background: white;
-            margin: 10px 0;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .status {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 4px;
-            background: #e3f2fd;
-            color: #1976d2;
-        }
-        .error {
-            background: #ffebee;
-            color: #c62828;
-        }
-        .success {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-        select {
-            margin: 5px 0;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 200px;
-        }
-        .preview {
-            max-width: 300px;
-            display: none;
-            margin: 10px 0;
-            border-radius: 4px;
-        }
-        .loading {
-            display: none;
-            padding: 10px;
-            color: #666;
-            font-style: italic;
-            background: rgba(0,0,0,0.05);
-            border-radius: 4px;
-            margin: 10px 0;
-        }
-        .media-button {
-            background: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px 0;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-        .media-button:hover {
-            background: #43A047;
-        }
-        .media-button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .photo-preview {
-            max-width: 200px;
-            margin: 10px 0;
-            display: none;
-            border-radius: 4px;
-            border: 2px solid #4CAF50;
-        }
-        .photo-container {
-            margin: 10px 0;
-        }
-        .link {
-            color: #1976d2;
-            text-decoration: none;
-        }
-        .link:hover {
-            text-decoration: underline;
-        }
+        body { font-family: Arial; padding: 20px; }
+        .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        button { padding: 5px 10px; }
     </style>
 </head>
 <body>
-    <h2>Complete Photo Upload Test</h2>
-    <div id="status" class="status">Ready to test</div>
-    <div id="loading" class="loading">Processing...</div>
+    <h2>Column P Write Test</h2>
+    <div id="status" class="status">Ready</div>
     <div id="items"></div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        const MAX_RETRIES = 3;
-        let photoData = null;
 
-        // Image compression function
-        async function compressImage(base64String) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.src = base64String;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    let width = img.width;
-                    let height = img.height;
-                    const maxSize = 800;
-                    
-                    if (width > height && width > maxSize) {
-                        height = (height * maxSize) / width;
-                        width = maxSize;
-                    } else if (height > maxSize) {
-                        width = (width * maxSize) / height;
-                        height = maxSize;
-                    }
-                    
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
-                };
-            });
-        }
-
-        async function uploadWithChunks(data) {
-            const chunkSize = 30000;
-            const serializedData = JSON.stringify(data);
-            const chunks = [];
-
-            // Split into chunks
-            for (let i = 0; i < serializedData.length; i += chunkSize) {
-                chunks.push(serializedData.slice(i, i + chunkSize));
-            }
-
-            // Upload each chunk with retry logic
-            for (let i = 0; i < chunks.length; i++) {
-                const chunkData = {
-                    chunk: chunks[i],
-                    index: i,
-                    total: chunks.length,
-                    isLast: i === chunks.length - 1
-                };
-
-                let retryCount = 0;
-                while (retryCount < MAX_RETRIES) {
-                    try {
-                        const response = await fetch(API_URL, {
-                            method: 'POST',
-                            mode: 'no-cors',
-                            headers: {
-                                'Content-Type': 'text/plain',
-                            },
-                            body: JSON.stringify(chunkData)
-                        });
-
-                        const progress = Math.round(((i + 1) / chunks.length) * 100);
-                        document.getElementById('loading').textContent = `Uploading... ${progress}%`;
-                        break;
-                    } catch (error) {
-                        retryCount++;
-                        if (retryCount === MAX_RETRIES) {
-                            throw new Error(`Failed to upload chunk ${i + 1}/${chunks.length} after ${MAX_RETRIES} attempts`);
-                        }
-                        document.getElementById('loading').textContent = `Retry ${retryCount}/${MAX_RETRIES}...`;
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                }
-            }
-        }
-
-        async function handlePhotoUpload(partId, previewId, buttonId) {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.capture = 'environment';
-
-            const button = document.getElementById(buttonId);
-            button.disabled = true;
-
-            input.onchange = async function(e) {
-                if (e.target.files && e.target.files[0]) {
-                    const loading = document.getElementById('loading');
-                    const status = document.getElementById('status');
-                    const preview = document.getElementById(previewId);
-                    
-                    loading.style.display = 'block';
-                    status.textContent = 'Compressing image...';
-                    status.className = 'status';
-                    
-                    try {
-                        const reader = new FileReader();
-                        reader.onload = async function(e) {
-                            try {
-                                // Show preview
-                                preview.src = e.target.result;
-                                preview.style.display = 'block';
-
-                                // Compress image
-                                const compressedPhoto = await compressImage(e.target.result);
-                                status.textContent = 'Uploading...';
-
-                                // Prepare data for chunked upload
-                                const data = {
-                                    partId: partId,
-                                    completePhoto: compressedPhoto.split(',')[1]
-                                };
-
-                                // Upload using chunking
-                                await uploadWithChunks(data);
-
-                                status.textContent = 'Photo uploaded successfully!';
-                                status.className = 'status success';
-                                setTimeout(fetchItems, 2000);
-                            } catch (error) {
-                                status.textContent = 'Error: ' + error.message;
-                                status.className = 'status error';
-                                preview.style.display = 'none';
-                            } finally {
-                                loading.style.display = 'none';
-                                button.disabled = false;
-                            }
-                        };
-                        reader.readAsDataURL(e.target.files[0]);
-                    } catch (error) {
-                        status.textContent = 'Error: ' + error.message;
-                        status.className = 'status error';
-                        loading.style.display = 'none';
-                        button.disabled = false;
-                    }
-                } else {
-                    button.disabled = false;
-                }
-            };
-
-            input.click();
-        }
-
-        async function updateStatus(partId, newStatus) {
-            document.getElementById('status').textContent = 'Updating status...';
+        async function writeToColumnP(partId) {
+            document.getElementById('status').textContent = 'Writing to column P...';
             try {
                 await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Status&newValue=${newStatus}`,
+                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Photo&newValue=TEST_URL_${new Date().getTime()}`,
                     { mode: 'no-cors' }
                 );
-                document.getElementById('status').textContent = 'Status updated!';
-                document.getElementById('status').className = 'status success';
+                document.getElementById('status').textContent = 'Write successful!';
                 setTimeout(fetchItems, 1000);
             } catch (error) {
-                document.getElementById('status').textContent = 'Update Error: ' + error.message;
-                document.getElementById('status').className = 'status error';
+                document.getElementById('status').textContent = 'Write Error: ' + error.message;
             }
         }
 
         async function fetchItems() {
-            document.getElementById('status').textContent = 'Loading items...';
-            document.getElementById('status').className = 'status';
+            document.getElementById('status').textContent = 'Loading...';
             try {
                 const response = await fetch(`${API_URL}?action=getAllData`);
                 const result = await response.json();
                 
                 if (result.status === "success" && Array.isArray(result.data)) {
                     const items = result.data.slice(0, 3);
-                    const itemsHtml = items.map((item, index) => {
+                    const itemsHtml = items.map(item => {
                         const partName = item["Part Name"] || '';
                         const partId = item["Part ID"] || '';
-                        const status = item["Status"] || '';
-                        const completePhoto = item["Complete Photo"] || '';
-                        const previewId = `preview-${index}`;
-                        const buttonId = `button-${index}`;
+                        const completePhoto = item["Complete Photo"] || 'None';
                         
                         return `
                             <div class="item">
                                 <strong>${partName}</strong><br>
                                 ID: ${partId}<br>
-                                Status: 
-                                <select onchange="updateStatus('${partId}', this.value)">
-                                    <option value="Needs Work" ${status === 'Needs Work' ? 'selected' : ''}>Needs Work</option>
-                                    <option value="Parts On Order" ${status === 'Parts On Order' ? 'selected' : ''}>Parts On Order</option>
-                                    <option value="In Progress" ${status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                                    <option value="Complete" ${status === 'Complete' ? 'selected' : ''}>Complete</option>
-                                </select>
-                                <div class="photo-container">
-                                    ${completePhoto ? `Current Complete Photo: <a href="${completePhoto}" target="_blank" class="link">View</a><br>` : 'No complete photo uploaded<br>'}
-                                    <img id="${previewId}" class="photo-preview" alt="Preview">
-                                </div>
-                                <button id="${buttonId}" class="media-button" onclick="handlePhotoUpload('${partId}', '${previewId}', '${buttonId}')">
-                                    Upload Complete Photo
+                                Current Complete Photo value: ${completePhoto}<br>
+                                <button onclick="writeToColumnP('${partId}')">
+                                    Write Test Value to Column P
                                 </button>
                             </div>
                         `;
@@ -303,11 +58,9 @@
                     
                     document.getElementById('items').innerHTML = itemsHtml;
                     document.getElementById('status').textContent = 'Ready';
-                    document.getElementById('status').className = 'status';
                 }
             } catch (error) {
                 document.getElementById('status').textContent = 'Load Error: ' + error.message;
-                document.getElementById('status').className = 'status error';
                 console.error('Error:', error);
             }
         }
