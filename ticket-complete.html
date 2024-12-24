@@ -23,7 +23,6 @@
                     { mode: 'no-cors' }
                 );
                 document.getElementById('status').textContent = 'Write successful!';
-                // Refresh data after 1 second
                 setTimeout(fetchItems, 1000);
             } catch (error) {
                 document.getElementById('status').textContent = 'Write Error: ' + error.message;
@@ -37,22 +36,32 @@
                 const result = await response.json();
                 
                 if (result.status === "success" && Array.isArray(result.data)) {
-                    const items = result.data.slice(0, 3); // Just show first 3
-                    document.getElementById('items').innerHTML = items.map(item => `
-                        <div class="item">
-                            <strong>${item.Part Name || item.partName}</strong><br>
-                            ID: ${item.Part ID || item.partId}<br>
-                            Status: ${item.Status}<br>
-                            Complete Notes: ${item['Complete Notes'] || 'None'}<br>
-                            <button onclick="testWrite('${item.Part ID || item.partId}')">
-                                Add Test Note
-                            </button>
-                        </div>
-                    `).join('');
+                    const items = result.data.slice(0, 3);
+                    const itemsHtml = items.map(item => {
+                        const partName = item["Part Name"] || '';
+                        const partId = item["Part ID"] || '';
+                        const status = item["Status"] || '';
+                        const notes = item["Complete Notes"] || 'None';
+                        
+                        return `
+                            <div class="item">
+                                <strong>${partName}</strong><br>
+                                ID: ${partId}<br>
+                                Status: ${status}<br>
+                                Complete Notes: ${notes}<br>
+                                <button onclick="testWrite('${partId}')">
+                                    Add Test Note
+                                </button>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    document.getElementById('items').innerHTML = itemsHtml;
                     document.getElementById('status').textContent = 'Data loaded!';
                 }
             } catch (error) {
                 document.getElementById('status').textContent = 'Load Error: ' + error.message;
+                console.error('Error:', error);
             }
         }
 
