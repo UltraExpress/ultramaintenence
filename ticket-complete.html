@@ -49,6 +49,11 @@
         .media-button:hover {
             background: #45a049;
         }
+        .photo-preview {
+            max-width: 200px;
+            margin: 10px 0;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -61,7 +66,7 @@
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
         let photoData = null;
 
-        // Image compression function from maintenance app
+        // Image compression function - same as maintenance app
         async function compressImage(base64String) {
             return new Promise((resolve) => {
                 const img = new Image();
@@ -70,7 +75,6 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // Calculate new dimensions (max 800px width/height)
                     let width = img.width;
                     let height = img.height;
                     const maxSize = 800;
@@ -85,14 +89,13 @@
                     
                     canvas.width = width;
                     canvas.height = height;
-                    
                     ctx.drawImage(img, 0, 0, width, height);
                     resolve(canvas.toDataURL('image/jpeg', 0.7));
                 };
             });
         }
 
-        async function handlePhotoUpload(partId) {
+        async function handlePhotoUpload(partId, previewId) {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
@@ -101,57 +104,53 @@
             input.onchange = async function(e) {
                 if (e.target.files && e.target.files[0]) {
                     const loading = document.getElementById('loading');
-                    loading.style.display = 'block';
+                    const status = document.getElementById('status');
+                    const preview = document.getElementById(previewId);
                     
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        try {
-                            // Compress the image
-                            const compressedPhoto = await compressImage(e.target.result);
-                            
-                            // Prepare the data
-                            const formData = {
-                                partId: partId,
-                                completePhoto: compressedPhoto.split(',')[1]
-                            };
+                    loading.style.display = 'block';
+                    status.textContent = 'Compressing image...';
+                    
+                    try {
+                        const reader = new FileReader();
+                        reader.onload = async function(e) {
+                            try {
+                                // Show preview
+                                preview.src = e.target.result;
+                                preview.style.display = 'block';
 
-                            // Send to API in chunks
-                            const serializedData = JSON.stringify(formData);
-                            const chunkSize = 30000;
-                            const chunks = [];
+                                // Compress image
+                                const compressedPhoto = await compressImage(e.target.result);
+                                status.textContent = 'Uploading...';
 
-                            for (let i = 0; i < serializedData.length; i += chunkSize) {
-                                chunks.push(serializedData.slice(i, i + chunkSize));
-                            }
-
-                            // Send each chunk
-                            for (let i = 0; i < chunks.length; i++) {
-                                const chunkData = {
-                                    chunk: chunks[i],
-                                    index: i,
-                                    total: chunks.length,
-                                    isLast: i === chunks.length - 1
-                                };
-
-                                await fetch(API_URL, {
+                                // Upload to Drive
+                                const response = await fetch(API_URL, {
                                     method: 'POST',
-                                    mode: 'no-cors',
                                     headers: {
-                                        'Content-Type': 'text/plain',
+                                        'Content-Type': 'application/json',
                                     },
-                                    body: JSON.stringify(chunkData)
+                                    body: JSON.stringify({
+                                        partId: partId,
+                                        completePhoto: compressedPhoto.split(',')[1]
+                                    })
                                 });
-                            }
 
-                            document.getElementById('status').textContent = 'Photo uploaded successfully!';
-                            setTimeout(fetchItems, 1000);
-                        } catch (error) {
-                            document.getElementById('status').textContent = 'Error uploading photo: ' + error.message;
-                        } finally {
-                            loading.style.display = 'none';
-                        }
-                    };
-                    reader.readAsDataURL(e.target.files[0]);
+                                if (!response.ok) {
+                                    throw new Error('Upload failed');
+                                }
+
+                                status.textContent = 'Photo uploaded successfully!';
+                                setTimeout(fetchItems, 1000);
+                            } catch (error) {
+                                status.textContent = 'Error: ' + error.message;
+                                preview.style.display = 'none';
+                            }
+                        };
+                        reader.readAsDataURL(e.target.files[0]);
+                    } catch (error) {
+                        status.textContent = 'Error: ' + error.message;
+                    } finally {
+                        loading.style.display = 'none';
+                    }
                 }
             };
 
@@ -180,11 +179,12 @@
                 
                 if (result.status === "success" && Array.isArray(result.data)) {
                     const items = result.data.slice(0, 3);
-                    const itemsHtml = items.map(item => {
+                    const itemsHtml = items.map((item, index) => {
                         const partName = item["Part Name"] || '';
                         const partId = item["Part ID"] || '';
                         const status = item["Status"] || '';
-                        const completePhoto = item["Complete Photo"] || 'None';
+                        const completePhoto = item["Complete Photo"] || '';
+                        const previewId = `preview-${index}`;
                         
                         return `
                             <div class="item">
@@ -197,8 +197,9 @@
                                     <option value="In Progress" ${status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                                     <option value="Complete" ${status === 'Complete' ? 'selected' : ''}>Complete</option>
                                 </select><br>
-                                Complete Photo: ${completePhoto}<br>
-                                <button class="media-button" onclick="handlePhotoUpload('${partId}')">
+                                ${completePhoto ? `Current Complete Photo: <a href="${completePhoto}" target="_blank">View</a><br>` : ''}
+                                <img id="${previewId}" class="photo-preview" alt="Preview">
+                                <button class="media-button" onclick="handlePhotoUpload('${partId}', '${previewId}')">
                                     Upload Complete Photo
                                 </button>
                             </div>
