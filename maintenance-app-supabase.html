@@ -14,25 +14,36 @@
 
 
 
-        .close-ticket-button {
-    display: block;
-    width: 100%;
-    padding: 15px;
-    margin: -10px 0 20px 0;
+.close-ticket-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    padding: 10px;
     background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
     color: white;
     border: none;
     border-radius: 12px;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 12px;
     text-transform: uppercase;
     font-weight: bold;
     text-shadow: 0 2px 4px rgba(0,0,0,0.2);
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     transition: all 0.3s ease;
-                text-decoration: none; 
-    text-align: center; 
-            } 
+    text-decoration: none;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+            }
+
+
+
+
+        
 
 .close-ticket-button:hover {
     transform: translateY(-2px);
