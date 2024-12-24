@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Sheets API Test</title>
+    <title>Google Sheets API Multi-Test - Version 1.2</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,13 +11,19 @@
             background-color: #f4f4f4;
         }
 
-        h1 {
+        h1, h2 {
             color: #333;
+        }
+
+        .version {
+            font-size: 12px;
+            color: gray;
+            margin-bottom: 20px;
         }
 
         button {
             padding: 10px 20px;
-            margin: 10px 0;
+            margin: 10px 5px;
             font-size: 16px;
             background-color: #007bff;
             color: white;
@@ -36,73 +42,136 @@
             padding: 15px;
             border-radius: 5px;
             overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .button-container {
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Google Sheets API Test</h1>
-    <p>This page tests the following:</p>
-    <ul>
-        <li>Fetching all data from the master script.</li>
-        <li>Posting data to update "Status" (Column F) for <strong>Part ID: 9_rsdp5</strong>.</li>
-    </ul>
+    <h1>Google Sheets API Multi-Test</h1>
+    <div class="version">Version: 1.2</div>
 
-    <button id="fetchDataButton">Get All Data</button>
-    <button id="postDataButton">Update Status for Part ID: 9_rsdp5</button>
+    <p>This page tests multiple POST and GET operations in one place:</p>
+
+    <div class="button-container">
+        <button id="testFetchData">Test 1: Fetch All Data</button>
+        <button id="testUpdateStatus">Test 2: Update Status for Part ID: 9_rsdp5</button>
+        <button id="testUpdateNotes">Test 3: Update Notes for Part ID: 9_rsdp5</button>
+        <button id="testUpdatePhotoLink">Test 4: Update Photo Link for Part ID: 9_rsdp5</button>
+        <button id="testUpdateVideoLink">Test 5: Update Video Link for Part ID: 9_rsdp5</button>
+    </div>
 
     <h2>Response:</h2>
-    <pre id="responseOutput">Click a button to see the result...</pre>
+    <pre id="responseOutput">Click a button to test...</pre>
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbyg8lCbqvnwdOmIHGZSWJCBsXbta1McPyBtI-6OYtHmPzA0dwFEWIFUNAMAicZKTIrfUg/exec";
 
         const responseOutput = document.getElementById('responseOutput');
-        const fetchDataButton = document.getElementById('fetchDataButton');
-        const postDataButton = document.getElementById('postDataButton');
 
-        // Fetch all data using the structure of the working app
-        fetchDataButton.addEventListener('click', async () => {
-            responseOutput.textContent = "Fetching data...";
+        // Helper function for GET requests
+        async function performGetRequest(action) {
             try {
-                const response = await fetch(`${API_URL}?action=getAllData`);
-                const result = await response.json();
+                const response = await fetch(`${API_URL}?action=${action}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                throw error;
+            }
+        }
 
-                if (result.status === "success") {
-                    responseOutput.textContent = JSON.stringify(result.data, null, 2);
-                } else {
-                    throw new Error("Failed to fetch data");
-                }
+        // Helper function for POST requests
+        async function performPostRequest(payload) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        // Test 1: Fetch all data
+        document.getElementById('testFetchData').addEventListener('click', async () => {
+            responseOutput.textContent = "Fetching all data...";
+            try {
+                const result = await performGetRequest("getAllData");
+                responseOutput.textContent = JSON.stringify(result, null, 2);
             } catch (error) {
                 responseOutput.textContent = `Error: ${error.message}`;
             }
         });
 
-        // Post data to update "Status" column for Part ID: 9_rsdp5
-        postDataButton.addEventListener('click', async () => {
-            responseOutput.textContent = "Posting data...";
+        // Test 2: Update Status for Part ID: 9_rsdp5
+        document.getElementById('testUpdateStatus').addEventListener('click', async () => {
+            responseOutput.textContent = "Updating status...";
+            const payload = {
+                action: "updateStatus",
+                partId: "9_rsdp5",
+                columnName: "Status",
+                newValue: "Needs Approval",
+            };
             try {
-                const payload = {
-                    action: "updateStatus", // Include the action explicitly
-                    partId: "9_rsdp5", // Ensure the Part ID matches
-                    columnName: "Status", // Column name to update
-                    newValue: "Needs Approval" // Value to set
-                };
+                const result = await performPostRequest(payload);
+                responseOutput.textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                responseOutput.textContent = `Error: ${error.message}`;
+            }
+        });
 
-                const response = await fetch(API_URL, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(payload)
-                });
+        // Test 3: Update Notes for Part ID: 9_rsdp5
+        document.getElementById('testUpdateNotes').addEventListener('click', async () => {
+            responseOutput.textContent = "Updating notes...";
+            const payload = {
+                action: "updateStatus",
+                partId: "9_rsdp5",
+                columnName: "Complete Notes",
+                newValue: "Test notes update from API",
+            };
+            try {
+                const result = await performPostRequest(payload);
+                responseOutput.textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                responseOutput.textContent = `Error: ${error.message}`;
+            }
+        });
 
-                const result = await response.json();
+        // Test 4: Update Photo Link for Part ID: 9_rsdp5
+        document.getElementById('testUpdatePhotoLink').addEventListener('click', async () => {
+            responseOutput.textContent = "Updating photo link...";
+            const payload = {
+                action: "updateStatus",
+                partId: "9_rsdp5",
+                columnName: "Complete Photo",
+                newValue: "https://example.com/photo.jpg",
+            };
+            try {
+                const result = await performPostRequest(payload);
+                responseOutput.textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                responseOutput.textContent = `Error: ${error.message}`;
+            }
+        });
 
-                if (result.status === "success") {
-                    responseOutput.textContent = `Update successful: ${JSON.stringify(result, null, 2)}`;
-                } else {
-                    throw new Error("Failed to update status");
-                }
+        // Test 5: Update Video Link for Part ID: 9_rsdp5
+        document.getElementById('testUpdateVideoLink').addEventListener('click', async () => {
+            responseOutput.textContent = "Updating video link...";
+            const payload = {
+                action: "updateStatus",
+                partId: "9_rsdp5",
+                columnName: "Complete Video",
+                newValue: "https://example.com/video.mp4",
+            };
+            try {
+                const result = await performPostRequest(payload);
+                responseOutput.textContent = JSON.stringify(result, null, 2);
             } catch (error) {
                 responseOutput.textContent = `Error: ${error.message}`;
             }
@@ -110,4 +179,3 @@
     </script>
 </body>
 </html>
-
