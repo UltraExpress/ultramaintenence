@@ -14,10 +14,33 @@
 
 
 
+
+
+        .header-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 60px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    text-align: left;
+    background: linear-gradient(90deg, #00f2fe, #4facfe);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-size: 18px;
+    margin: 0;
+    line-height: 1.4;
+}
+
+
+
+
 .close-ticket-button {
-    position: absolute;
-    top: 70px;
-    right: 20px;
+    flex-shrink: 0;
+    margin-left: 15px;
     width: 60px;
     height: 60px;
     padding: 10px;
@@ -38,7 +61,7 @@
     align-items: center;
     justify-content: center;
     line-height: 1.2;
-            }
+}
 
 
 
@@ -73,16 +96,9 @@
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
             border: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(4px);
+            margin-top: 60px;
         }
-        h1 {
-            text-align: center;
-            background: linear-gradient(90deg, #00f2fe, #4facfe);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            font-size: 24px;
-            margin-bottom: 30px;
-        }
+
 
 
 
@@ -192,9 +208,17 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>ULTRA WASH MAINTENANCE APP</h1>
-        <a href="ticket-complete.html" class="close-ticket-button">Close Ticket</a>
+
+
+
+<div class="container">
+    <div class="header-wrapper">
+        <h1>ULTRA WASH<br>MAINTENANCE APP</h1>
+        <a href="ticket-complete.html" class="close-ticket-button">CLOSE<br>TICKET</a>
+    </div>
+
+    
+  
         
         <form id="maintenanceForm">
             <div class="form-group">
