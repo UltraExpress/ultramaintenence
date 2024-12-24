@@ -3,9 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <title>Ticket Complete App</title>
     <style>
         body {
@@ -113,7 +110,6 @@
     <div class="container">
         <h1>Ticket Complete App</h1>
 
-        <!-- Dropdown to select item -->
         <div class="form-group">
             <label for="itemSelect">Select Maintenance Item:</label>
             <select id="itemSelect" required>
@@ -121,33 +117,28 @@
             </select>
         </div>
 
-        <!-- Existing Notes -->
         <div class="form-group">
             <label for="existingNotes">Existing Notes:</label>
             <textarea id="existingNotes" readonly></textarea>
         </div>
 
-        <!-- New Notes -->
         <div class="form-group">
             <label for="newNotes">New Completion Notes:</label>
             <textarea id="newNotes" required></textarea>
         </div>
 
-        <!-- Photo Upload -->
         <div class="form-group">
             <label>New Completion Photo:</label>
             <input type="file" id="photoInput" accept="image/*" style="display: none;">
             <button type="button" class="media-button" id="photoButton">Upload Photo</button>
         </div>
 
-        <!-- Video Upload -->
         <div class="form-group">
             <label>New Completion Video:</label>
             <input type="file" id="videoInput" accept="video/*" style="display: none;">
             <button type="button" class="media-button" id="videoButton">Upload Video</button>
         </div>
 
-        <!-- Submit Button -->
         <button id="submitButton" class="submit-button">Submit</button>
     </div>
 
@@ -156,7 +147,6 @@
 
         let items = [];
 
-        // Fetch data from API
         async function fetchData() {
             try {
                 const response = await fetch(`${API_URL}?action=getAllData`);
@@ -166,7 +156,7 @@
                     items = data.data;
                     populateDropdown(items);
                 } else {
-                    alert('Error fetching items. Please try again.');
+                    alert('Error fetching items.');
                 }
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -174,55 +164,47 @@
             }
         }
 
-        // Populate dropdown
-        function populateDropdown(items) {
+        function populateDropdown(data) {
             const itemSelect = document.getElementById('itemSelect');
             itemSelect.innerHTML = '<option value="">Select an item</option>';
-
-            items.forEach((item, index) => {
+            data.forEach((item, index) => {
                 const option = document.createElement('option');
                 option.value = index;
                 option.textContent = `${item.Location} - ${item['Part Name']} (${item.Status})`;
                 itemSelect.appendChild(option);
             });
 
-            itemSelect.addEventListener('change', (e) => {
-                const selectedItem = items[e.target.value];
-                document.getElementById('existingNotes').value = selectedItem.Notes || 'No notes available.';
+            itemSelect.addEventListener('change', () => {
+                const selectedItem = items[itemSelect.value];
+                document.getElementById('existingNotes').value = selectedItem.Notes || '';
             });
         }
 
-        // Submit data
         document.getElementById('submitButton').addEventListener('click', async () => {
-            const selectedItem = document.getElementById('itemSelect').value;
+            const selectedIndex = document.getElementById('itemSelect').value;
             const newNotes = document.getElementById('newNotes').value;
 
-            if (!selectedItem || !newNotes) {
-                alert('Please complete all fields.');
+            if (!selectedIndex || !newNotes) {
+                alert('Please fill all fields.');
                 return;
             }
 
-            try {
-                const item = items[selectedItem];
-                const payload = {
-                    partId: item['Part ID'],
-                    status: 'Awaiting Approval',
-                    newNotes: newNotes,
-                };
+            const selectedItem = items[selectedIndex];
+            const payload = {
+                partId: selectedItem['Part ID'],
+                status: 'Awaiting Approval',
+                newNotes,
+            };
 
+            try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'no-cors', // Ensures compatibility with existing backend
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(payload),
                 });
 
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    alert('Item updated successfully!');
-                } else {
-                    alert('Error submitting data.');
-                }
+                alert('Item updated successfully!');
             } catch (error) {
                 console.error('Error submitting data:', error);
                 alert('Failed to submit data.');
@@ -233,3 +215,4 @@
     </script>
 </body>
 </html>
+
