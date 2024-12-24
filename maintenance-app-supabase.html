@@ -10,6 +10,13 @@
     <!-- Add Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <style>
+
+
+        .priority-medium { background-color: #2196F3 !important; color: white !important; }
+.priority-high { background-color: #FF9800 !important; color: white !important; }
+.priority-critical { background-color: #f44336 !important; color: white !important; }
+
+        
         /* Keeping your exact same styles */
         body {
             font-family: 'Segoe UI', 'Roboto', sans-serif;
@@ -173,6 +180,20 @@
                 </select>
             </div>
 
+
+<div class="form-group">
+    <label for="priority">Priority Level:</label>
+    <select id="priority" required onchange="updatePriorityStyle(this)">
+        <option value="">Select Priority</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+        <option value="Critical">Critical</option>
+    </select>
+</div>
+
+
+            
+
             <div class="form-group">
                 <label for="notes">Maintenance Notes:</label>
                 <textarea id="notes" required></textarea>
@@ -199,6 +220,22 @@
     </div>
 
     <script>
+
+
+
+function updatePriorityStyle(select) {
+    select.className = '';
+    if (select.value === 'Medium') {
+        select.classList.add('priority-medium');
+    } else if (select.value === 'High') {
+        select.classList.add('priority-high');
+    } else if (select.value === 'Critical') {
+        select.classList.add('priority-critical');
+    }
+}
+
+
+        
         // Initialize Supabase client
         console.log('Initializing Supabase...');
         const supabaseUrl = 'https://glmnunnmbybqevgpjwlg.supabase.co';
@@ -560,7 +597,7 @@ document.getElementById('maintenanceForm').addEventListener('submit', async func
                 photo_link: photo_link,
                 video_link: video_link,
                 ticket_closed: document.getElementById('status').value === 'Complete' ? new Date().toISOString() : null,
-                priority: 'medium',
+                priority: document.getElementById('priority').value,
                 score: '0',
                 complete_notes: null,
                 complete_photo: null,
@@ -578,6 +615,7 @@ document.getElementById('maintenanceForm').addEventListener('submit', async func
             document.getElementById('photoPreview').style.display = 'none';
             document.getElementById('videoPreview').style.display = 'none';
             document.getElementById('status').className = '';
+            document.getElementById('priority').className = '';
             document.getElementById('part').disabled = true;
             photoData = null;
             videoBlob = null;
