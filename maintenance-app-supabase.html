@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>ULTRA WASH MAINTENANCE APP</title>
     <!-- Add Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <style>
         /* Keeping your exact same styles */
         body {
@@ -200,9 +200,16 @@
 
     <script>
         // Initialize Supabase client
+        console.log('Initializing Supabase...');
         const supabaseUrl = 'https://glmnunnmbybqevgpjwlg.supabase.co';
+        
+        // Add error handling for script loading
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
+            return false;
+        };
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsbW51bm5tYnlicWV2Z3Bqd2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwNjQwOTMsImV4cCI6MjA1MDY0MDA5M30.6XnMRH86CpQCoImyQ_aRFMZIPYbZkOk0onW0CL9wqXs';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         // Initialize variables
         let currentPosition = null;
