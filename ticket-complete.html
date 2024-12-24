@@ -7,6 +7,8 @@
         .status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
         img.preview { max-width: 300px; display: none; margin: 10px 0; }
         .loading { display: none; color: #666; }
+        #uploaded-links { margin-top: 20px; }
+        .link-item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
@@ -16,6 +18,12 @@
     <button onclick="document.getElementById('photoInput').click()">Take Photo</button>
     <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none">
     <img id="photoPreview" class="preview">
+    
+    <div id="uploaded-links">
+        <h3>Last 5 Photos from Sheet:</h3>
+        <div id="link-list"></div>
+        <button onclick="refreshLinks()">Refresh Links</button>
+    </div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
@@ -48,6 +56,34 @@
                     resolve(canvas.toDataURL('image/jpeg', 0.7));
                 };
             });
+        }
+
+        // Get links from sheet
+        async function refreshLinks() {
+            try {
+                const response = await fetch(`${API_URL}?action=getAllData`);
+                const result = await response.json();
+                
+                if (result.status === "success" && Array.isArray(result.data)) {
+                    const links = result.data
+                        .filter(item => item["Photo Link"]) // Get items with photo links
+                        .slice(0, 5) // Get last 5
+                        .map(item => {
+                            return `
+                                <div class="link-item">
+                                    Time: ${new Date(item.Timestamp).toLocaleString()}<br>
+                                    Photo Link: <a href="${item["Photo Link"]}" target="_blank">View Photo</a>
+                                </div>
+                            `;
+                        })
+                        .join('');
+                    
+                    document.getElementById('link-list').innerHTML = links || 'No photo links found';
+                }
+            } catch (error) {
+                console.error('Error fetching links:', error);
+                document.getElementById('link-list').innerHTML = 'Error loading links';
+            }
         }
 
         // Handle photo input - exact same as maintenance app
@@ -115,7 +151,8 @@
                     });
                 }
 
-                status.textContent = 'Upload complete!';
+                status.textContent = 'Upload complete! Refreshing links in 2 seconds...';
+                setTimeout(refreshLinks, 2000);
             } catch (error) {
                 status.textContent = 'Error: ' + error.message;
                 console.error('Upload error:', error);
@@ -123,6 +160,9 @@
                 loading.style.display = 'none';
             }
         }
+
+        // Initial load of links
+        refreshLinks();
     </script>
 </body>
 </html>
