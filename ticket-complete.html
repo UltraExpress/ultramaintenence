@@ -3,131 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Google Sheets API Multi-Test</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f9;
+            background: #f4f4f9;
+            color: #333;
+            padding: 20px;
         }
         h1 {
-            color: #333;
+            text-align: center;
+            color: #007BFF;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
         }
         button {
-            background-color: #007bff;
-            color: white;
-            border: none;
             padding: 10px 20px;
-            margin: 5px;
-            cursor: pointer;
+            font-size: 16px;
+            border: none;
             border-radius: 5px;
+            cursor: pointer;
+            color: #fff;
+        }
+        button.get {
+            background-color: #007BFF;
+        }
+        button.post {
+            background-color: #28A745;
         }
         button:hover {
-            background-color: #0056b3;
+            opacity: 0.9;
         }
-        .response {
-            background: #f8f9fa;
+        .response-container {
+            margin-top: 20px;
             padding: 10px;
-            margin-top: 10px;
-            border-radius: 5px;
-            overflow-x: auto;
+            background: #fff;
             border: 1px solid #ccc;
+            border-radius: 5px;
         }
-        .version {
-            color: gray;
-            font-size: 0.9em;
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
     </style>
 </head>
 <body>
     <h1>Google Sheets API Multi-Test</h1>
-    <p class="version">Version 1.4</p>
-
-    <h2>GET Tests:</h2>
-    <button onclick="testGetAllData()">Test 1: Fetch All Data</button>
-    <button onclick="testGetStats()">Test 2: Fetch Maintenance Stats</button>
-    <button onclick="testGetReports()">Test 3: Fetch Maintenance Reports</button>
-
-    <h2>POST Tests:</h2>
-    <button onclick="testPostNotes1()">Test 4: Update Notes (Part ID: 9_rsdp5)</button>
-    <button onclick="testPostNotes2()">Test 5: Update Notes (Part ID: 19_rmdp1)</button>
-
-    <h3>Response:</h3>
-    <div id="response" class="response">Response will appear here...</div>
+    <p>Version: 1.5</p>
+    <div class="button-container">
+        <!-- GET Tests -->
+        <button class="get" onclick="getTestData(1)">Test 1: Fetch All Data</button>
+        <button class="get" onclick="getTestData(2)">Test 2: Fetch Maintenance Stats</button>
+        <button class="get" onclick="getTestData(3)">Test 3: Fetch Maintenance Reports</button>
+        
+        <!-- POST Tests -->
+        <button class="post" onclick="postTestData(4)">Test 4: Update Notes (Part ID: 9_rsdp5)</button>
+        <button class="post" onclick="postTestData(5)">Test 5: Update Notes (Part ID: 19_rmdp1)</button>
+    </div>
+    <div class="response-container">
+        <h2>Response:</h2>
+        <pre id="response">Waiting for test...</pre>
+    </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyg8lCbqvnwdOmIHGZSWJCBsXbta1McPyBtI-6OYtHmPzA0dwFEWIFUNAMAicZKTIrfUg/exec';
+        const scriptURL = 'YOUR_SCRIPT_URL'; // Replace with your Apps Script URL
+        const chunkSize = 30000; // Maximum chunk size for POST requests
 
-        // Helper to update response box
+        // Function to update the response area
         function updateResponse(message) {
-            document.getElementById('response').textContent = typeof message === 'string' ? message : JSON.stringify(message, null, 2);
+            const responseElement = document.getElementById('response');
+            responseElement.textContent = message;
         }
 
         // GET Tests
-        async function testGetAllData() {
-            try {
-                const response = await fetch(`${API_URL}?action=getReports`);
-                const data = await response.json();
-                updateResponse(data);
-            } catch (error) {
-                updateResponse(`Error: ${error.message}`);
-            }
-        }
+        async function getTestData(testNumber) {
+            const actions = ['getAllData', 'getStats', 'getReports'];
+            const action = actions[testNumber - 1];
 
-        async function testGetStats() {
             try {
-                const response = await fetch(`${API_URL}?action=getStats`);
-                const data = await response.json();
-                updateResponse(data);
-            } catch (error) {
-                updateResponse(`Error: ${error.message}`);
-            }
-        }
+                const response = await fetch(`${scriptURL}?action=${action}`, {
+                    method: 'GET',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
 
-        async function testGetReports() {
-            try {
-                const response = await fetch(`${API_URL}?action=getReports`);
                 const data = await response.json();
-                updateResponse(data);
+                updateResponse(`Test ${testNumber} - GET Successful:\n${JSON.stringify(data, null, 2)}`);
             } catch (error) {
-                updateResponse(`Error: ${error.message}`);
+                console.error(`Error in Test ${testNumber}:`, error);
+                updateResponse(`Test ${testNumber} - GET Failed: ${error.message}`);
             }
         }
 
         // POST Tests
-        async function testPostNotes1() {
-            const payload = {
-                partId: '9_rsdp5',
+        async function postTestData(testNumber) {
+            const testPayload = {
+                test: `Post Test ${testNumber}`,
+                partId: testNumber === 4 ? '9_rsdp5' : '19_rmdp1',
                 columnName: 'Complete Notes',
-                newValue: 'Testing update from Test 4'
+                newValue: `Testing POST functionality ${testNumber}`
             };
-            await postData(payload);
-        }
 
-        async function testPostNotes2() {
-            const payload = {
-                partId: '19_rmdp1',
-                columnName: 'Complete Notes',
-                newValue: 'Testing update from Test 5'
-            };
-            await postData(payload);
-        }
-
-        async function postData(payload) {
             try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-                const data = await response.json();
-                updateResponse(data);
+                const chunks = [];
+                const serializedData = JSON.stringify(testPayload);
+
+                // Split payload into chunks
+                for (let i = 0; i < serializedData.length; i += chunkSize) {
+                    chunks.push(serializedData.slice(i, i + chunkSize));
+                }
+
+                // Upload chunks
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunkData = {
+                        chunk: chunks[i],
+                        index: i,
+                        total: chunks.length,
+                        isLast: i === chunks.length - 1
+                    };
+
+                    await fetch(scriptURL, {
+                        method: 'POST',
+                        mode: 'no-cors', // Bypass CORS restrictions
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify(chunkData)
+                    });
+                }
+
+                updateResponse(`Test ${testNumber} - POST Successful`);
             } catch (error) {
-                updateResponse(`Error: ${error.message}`);
+                console.error(`Error in Test ${testNumber}:`, error);
+                updateResponse(`Test ${testNumber} - POST Failed: ${error.message}`);
             }
         }
     </script>
 </body>
 </html>
+
