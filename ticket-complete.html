@@ -6,6 +6,8 @@
         .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
         .status { margin: 10px 0; color: blue; }
         select { margin: 5px 0; padding: 5px; }
+        .preview { max-width: 200px; margin: 5px 0; display: none; }
+        .preview.show { display: block; }
     </style>
 </head>
 <body>
@@ -15,6 +17,49 @@
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
+        
+        // Helper function for base64 conversion
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function uploadImage(partId, file) {
+            document.getElementById('status').textContent = 'Processing image...';
+            try {
+                // Convert image to base64
+                const base64Data = await blobToBase64(file);
+                
+                // Send to API
+                await fetch(
+                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Photo&newValue=${encodeURIComponent(base64Data)}`,
+                    { mode: 'no-cors' }
+                );
+                
+                document.getElementById('status').textContent = 'Image uploaded!';
+                setTimeout(fetchItems, 1000);
+            } catch (error) {
+                document.getElementById('status').textContent = 'Upload Error: ' + error.message;
+                console.error('Error:', error);
+            }
+        }
+
+        function handleImageSelect(partId, input) {
+            const file = input.files[0];
+            if (file) {
+                // Show preview
+                const preview = document.getElementById(`preview-${partId}`);
+                preview.src = URL.createObjectURL(file);
+                preview.classList.add('show');
+                
+                // Upload
+                uploadImage(partId, file);
+            }
+        }
 
         async function testWrite(partId) {
             document.getElementById('status').textContent = 'Writing test note...';
@@ -57,6 +102,7 @@
                         const partId = item["Part ID"] || '';
                         const status = item["Status"] || '';
                         const notes = item["Complete Notes"] || 'None';
+                        const photo = item["Complete Photo"] || '';
                         
                         return `
                             <div class="item">
@@ -70,9 +116,15 @@
                                     <option value="Complete" ${status === 'Complete' ? 'selected' : ''}>Complete</option>
                                 </select><br>
                                 Complete Notes: ${notes}<br>
-                                <button onclick="testWrite('${partId}')">
-                                    Add Test Note
-                                </button>
+                                <button onclick="testWrite('${partId}')">Add Test Note</button><br>
+                                <div>
+                                    <input type="file" 
+                                           accept="image/*" 
+                                           onchange="handleImageSelect('${partId}', this)"
+                                           style="margin: 10px 0;">
+                                    <img id="preview-${partId}" class="preview ${photo ? 'show' : ''}" 
+                                         src="${photo}" alt="Preview">
+                                </div>
                             </div>
                         `;
                     }).join('');
