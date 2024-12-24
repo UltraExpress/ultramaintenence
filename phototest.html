@@ -36,22 +36,48 @@
 
         async function uploadData() {
             if (!photoData) return;
-            
             const status = document.getElementById('status');
             status.textContent = 'Uploading...';
 
             try {
-                const formData = new FormData();
-                formData.append('photo', photoData);
-                formData.append('name', 'test');
-                formData.append('location', 'CLOSEOUT');
-                formData.append('timestamp', new Date().toISOString());
+                const data = {
+                    photo: photoData,
+                    name: 'test',
+                    location: 'CLOSEOUT',
+                    partId: 'test_' + Math.random().toString(36).substring(2),
+                    partName: 'Test Upload',
+                    status: 'Test',
+                    notes: 'Test upload',
+                    timestamp: new Date().toISOString()
+                };
 
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: formData
-                });
+                const serializedData = JSON.stringify(data);
+                const chunkSize = 30000;
+                const chunks = [];
+
+                for (let i = 0; i < serializedData.length; i += chunkSize) {
+                    chunks.push(serializedData.slice(i, i + chunkSize));
+                }
+
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunkData = {
+                        chunk: chunks[i],
+                        index: i,
+                        total: chunks.length,
+                        isLast: i === chunks.length - 1
+                    };
+
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'text/plain',
+                        },
+                        body: JSON.stringify(chunkData)
+                    });
+                    
+                    status.textContent = `Uploading... ${Math.round(((i + 1) / chunks.length) * 100)}%`;
+                }
 
                 status.textContent = 'Upload complete!';
                 setTimeout(() => {
