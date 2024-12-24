@@ -17,12 +17,7 @@
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        const MAX_CHUNK_SIZE = 30000;
-
-        function generateRandomString() {
-            return '_' + Math.random().toString(36).substring(2, 6);
-        }
-
+        
         async function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -37,49 +32,39 @@
             status.textContent = 'Processing image...';
             
             try {
+                // Create the data structure exactly like the main app
                 const base64Data = await blobToBase64(file);
-                const formData = new FormData();
-                formData.append('name', 'test_user');
-                formData.append('location', 'test_location');
-                formData.append('partId', partId + generateRandomString());
-                formData.append('photo', base64Data.split(',')[1]);
-                formData.append('timestamp', new Date().toISOString());
+                const formData = {
+                    partId: partId,
+                    location: 'TEST',
+                    name: 'TEST',
+                    timestamp: new Date().toISOString(),
+                    photoBase64: base64Data.split(',')[1]
+                };
 
-                const data = {};
-                for (let [key, value] of formData.entries()) {
-                    data[key] = value;
-                }
+                // Send the update to update Complete Photo
+                await fetch(
+                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Photo&newValue=UPLOADING`,
+                    { mode: 'no-cors' }
+                );
 
-                const serializedData = JSON.stringify(data);
-                const chunks = [];
+                // Now send the actual photo
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify({
+                        chunk: JSON.stringify(formData),
+                        index: 0,
+                        total: 1,
+                        isLast: true
+                    })
+                });
 
-                for (let i = 0; i < serializedData.length; i += MAX_CHUNK_SIZE) {
-                    chunks.push(serializedData.slice(i, i + MAX_CHUNK_SIZE));
-                }
-
-                status.textContent = 'Uploading...';
-                
-                for (let i = 0; i < chunks.length; i++) {
-                    const chunkData = {
-                        chunk: chunks[i],
-                        index: i,
-                        total: chunks.length,
-                        isLast: i === chunks.length - 1
-                    };
-
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: {
-                            'Content-Type': 'text/plain',
-                        },
-                        body: JSON.stringify(chunkData)
-                    });
-                    status.textContent = `Uploading... ${Math.round(((i + 1) / chunks.length) * 100)}%`;
-                }
-
-                status.textContent = 'Upload complete!';
-                setTimeout(fetchItems, 1000);
+                status.textContent = 'Upload complete - refreshing...';
+                setTimeout(fetchItems, 2000); // Give it time to process
             } catch (error) {
                 status.textContent = 'Upload Error: ' + error.message;
                 console.error('Error:', error);
@@ -155,6 +140,7 @@
                                     <option value="Complete" ${currentStatus === 'Complete' ? 'selected' : ''}>Complete</option>
                                 </select><br>
                                 Complete Notes: ${notes}<br>
+                                Complete Photo: ${photo || 'None'}<br>
                                 <button id="note-btn-${index}" onclick="testWrite('${partId}')">Add Test Note</button><br>
                                 <div>
                                     <input type="file" 
