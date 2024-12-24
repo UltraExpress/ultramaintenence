@@ -3,472 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ULTRA WASH Ticket Closeout</title>
+    <title>Sheet Test App</title>
     <style>
         body {
-            font-family: 'Segoe UI', 'Roboto', sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
             padding: 20px;
             background: #13111C;
-            color: #fff;
+            color: white;
         }
         .version {
-            position: absolute;
+            position: fixed;
             top: 10px;
             right: 10px;
             background: rgba(79, 172, 254, 0.1);
             padding: 5px 10px;
             border-radius: 5px;
             color: #4facfe;
-            font-size: 12px;
         }
-        .select-container {
-            margin: 20px 0;
-        }
-        select {
-            width: 100%;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            color: white;
-            margin-bottom: 20px;
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234facfe' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            background-size: 1em;
-        }
-        select option[disabled] {
-            background-color: #2a2a2a;
-            color: #666;
-        }
-        .work-order {
-            background: linear-gradient(145deg, #1a1825, #252331);
+        .container {
+            background: #1a1825;
             padding: 20px;
             border-radius: 10px;
-            margin-bottom: 20px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            display: none;
         }
-        .work-order.active {
-            display: block;
-        }
-        .work-order-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .status-badge {
-            padding: 5px 15px;
-            border-radius: 15px;
-            font-size: 14px;
-        }
-        .status-needs-work { background-color: #ff4444; }
-        .status-in-progress { background-color: #ffbb33; }
-        .status-complete { background-color: #00C851; }
-        textarea {
+        input, select {
             width: 100%;
-            padding: 10px;
+            padding: 8px;
+            margin: 5px 0 15px;
+            border-radius: 5px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
             color: white;
-            margin-bottom: 10px;
-            min-height: 100px;
         }
-        .media-button {
+        button {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             color: white;
             padding: 10px 20px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            margin: 5px;
-        }
-        .submit-button {
-            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
             width: 100%;
+        }
+        .status {
             margin-top: 20px;
-        }
-        .preview {
-            max-width: 300px;
-            display: none;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-        .loading {
-            display: none;
-            text-align: center;
             padding: 10px;
-            color: #4facfe;
-        }
-        .original-photo {
-            max-width: 300px;
             border-radius: 5px;
-            margin: 10px 0;
-        }
-        .details-section {
             background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="version">v1.0</div>
-    
-    <div class="select-container">
-        <select id="workOrderSelect" onchange="showSelectedOrder()">
-            <option value="">Select a Work Order</option>
-        </select>
-    </div>
+    <div class="container">
+        <h2>Sheet Test App</h2>
+        
+        <div>
+            <label>Part ID (existing from sheet):</label>
+            <input type="text" id="partId">
+        </div>
 
-    <div id="workOrderDetails"></div>
+        <div>
+            <label>Status (Column F):</label>
+            <input type="text" id="status" value="Awaiting Approval">
+        </div>
+
+        <div>
+            <label>Complete Notes (Column O):</label>
+            <input type="text" id="completeNotes" value="Test notes">
+        </div>
+
+        <div>
+            <label>Complete Photo Link (Column P):</label>
+            <input type="text" id="completePhoto" value="Test photo link">
+        </div>
+
+        <div>
+            <label>Complete Video Link (Column Q):</label>
+            <input type="text" id="completeVideo" value="Test video link">
+        </div>
+
+        <button onclick="submitTest()">Submit Test Update</button>
+        <div id="status" class="status"></div>
+    </div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        let photoData = null;
-        let videoBlob = null;
-        const MAX_RETRIES = 3;
-        let allWorkOrders = [];
+        
+        async function submitTest() {
+            const statusDiv = document.querySelector('.status');
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = 'Submitting...';
 
-        async function fetchWorkOrders() {
-            try {
-                const response = await fetch(`${API_URL}?action=getAllData`);
-                const result = await response.json();
-                
-                if (result.status === "success" && Array.isArray(result.data)) {
-                    allWorkOrders = result.data;
-                    populateWorkOrderSelect(result.data);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error loading work orders. Please try again.');
-            }
-        }
-
-        function populateWorkOrderSelect(orders) {
-            const select = document.getElementById('workOrderSelect');
-            select.innerHTML = '<option value="">Select a Work Order</option>';
-            
-            // First add non-completed orders
-            orders.filter(order => order.Status !== 'Complete')
-                .forEach(order => {
-                    const option = document.createElement('option');
-                    option.value = order['Part ID'];
-                    option.textContent = `${order['Part Name']} - ${order.Status}`;
-                    select.appendChild(option);
-                });
-            
-            // Then add completed orders (disabled)
-            orders.filter(order => order.Status === 'Complete')
-                .forEach(order => {
-                    const option = document.createElement('option');
-                    option.value = order['Part ID'];
-                    option.textContent = `${order['Part Name']} - Complete`;
-                    option.disabled = true;
-                    select.appendChild(option);
-                });
-        }
-
-        function showSelectedOrder() {
-            const selectedId = document.getElementById('workOrderSelect').value;
-            const order = allWorkOrders.find(o => o['Part ID'] === selectedId);
-            
-            if (!order) {
-                document.getElementById('workOrderDetails').innerHTML = '';
-                return;
-            }
-
-            document.getElementById('workOrderDetails').innerHTML = `
-                <div class="work-order active">
-                    <div class="work-order-header">
-                        <h3>${order['Part Name']}</h3>
-                        <span class="status-badge status-${order.Status?.toLowerCase().replace(/\s+/g, '-')}">${order.Status}</span>
-                    </div>
-                    
-                    <div class="details-section">
-                        <strong>Technician:</strong> ${order.name || 'Not Assigned'}<br>
-                        <strong>Original Notes:</strong> ${order.Notes || 'No notes provided'}<br>
-                        ${order['Photo Link'] ? `
-                            <div style="margin-top: 10px;">
-                                <strong>Original Photo:</strong><br>
-                                <img src="${order['Photo Link']}" class="original-photo" alt="Work Order Photo">
-                            </div>
-                        ` : ''}
-                    </div>
-
-                    <div class="details-section">
-                        <h4>Complete Work Order</h4>
-                        <textarea id="completeNotes" placeholder="Enter completion notes"></textarea>
-                        
-                        <div>
-                            <input type="file" id="photoInput" accept="image/*" style="display: none;">
-                            <button onclick="document.getElementById('photoInput').click()" class="media-button">Add Completion Photo</button>
-                            <img id="photoPreview" class="preview">
-                        </div>
-                        
-                        <div>
-                            <input type="file" id="videoInput" accept="video/*" style="display: none;">
-                            <button onclick="document.getElementById('videoInput').click()" class="media-button">Add Completion Video</button>
-                            <video id="videoPreview" class="preview" controls></video>
-                        </div>
-                        
-                        <div class="loading">Processing...</div>
-                        <button onclick="submitCloseout('${order['Part ID']}')" class="submit-button">Submit Closeout</button>
-                    </div>
-                </div>
-            `;
-
-            // Add event listeners for file inputs
-            document.getElementById('photoInput').addEventListener('change', handlePhotoInput);
-            document.getElementById('videoInput').addEventListener('change', handleVideoInput);
-        }
-
-        // Rest of the functions (handlePhotoInput, handleVideoInput, submitCloseout, etc.) remain the same
-        async function handlePhotoInput(e) {
-            if (e.target.files?.[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    photoData = e.target.result;
-                    document.getElementById('photoPreview').src = photoData;
-                    document.getElementById('photoPreview').style.display = 'block';
-                };
-                reader.readAsDataURL(e.target.files[0]);
-            }
-        }
-
-        async function handleVideoInput(e) {
-            if (e.target.files?.[0]) {
-                videoBlob = e.target.files[0];
-                const videoUrl = URL.createObjectURL(videoBlob);
-                const videoPreview = document.getElementById('videoPreview');
-                videoPreview.src = videoUrl;
-                videoPreview.style.display = 'block';
-
-                const duration = await checkVideoDuration(videoBlob);
-                if (duration > 30) {
-                    alert('Video must be 30 seconds or less');
-                    videoBlob = null;
-                    videoPreview.src = '';
-                    videoPreview.style.display = 'none';
-                }
-            }
-        }
-
-        async function submitCloseout(partId) {
-            const loading = document.querySelector('.loading');
-            const notes = document.getElementById('completeNotes').value;
-
-            if (!notes.trim()) {
-                alert('Please enter completion notes');
-                return;
-            }
-
-            loading.style.display = 'block';
-
-            try {
-                // Construct the data object
-                const data = {
-                    partId: partId,
-                    completeNotes: notes,
-                    status: 'Awaiting Approval',
-                    timestamp: new Date().toISOString()
-                };
-
-                // Handle photo
-                if (photoData) {
-                    const compressedPhoto = await compressImage(photoData);
-                    data.completePhoto = compressedPhoto.split(',')[1];
-                }
-
-                // Handle video
-                if (videoBlob) {
-                    const compressedVideo = await compressVideo(videoBlob);
-                    const videoBase64 = await blobToBase64(compressedVideo);
-                    data.completeVideo = videoBase64.split(',')[1];
-                }
-
-                // Update columns F (Status), O (Complete Notes), P (Complete Photo), Q (Complete Video)
-                data.columnMappings = {
+            const data = {
+                partId: document.getElementById('partId').value,
+                status: document.getElementById('status').value,
+                completeNotes: document.getElementById('completeNotes').value,
+                completePhoto: document.getElementById('completePhoto').value,
+                completeVideo: document.getElementById('completeVideo').value,
+                columnMappings: {
                     'status': 'F',
                     'completeNotes': 'O',
                     'completePhoto': 'P',
                     'completeVideo': 'Q'
-                };
-
-                await sendInChunks(data, loading);
-
-                alert('Closeout submitted successfully!');
-                fetchWorkOrders();
-                document.getElementById('workOrderSelect').value = '';
-                document.getElementById('workOrderDetails').innerHTML = '';
-
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error submitting closeout. Please try again.');
-            } finally {
-                loading.style.display = 'none';
-            }
-        }
-
-                async function compressImage(base64String) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.src = base64String;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    let width = img.width;
-                    let height = img.height;
-                    const maxSize = 800;
-                    
-                    if (width > height && width > maxSize) {
-                        height = (height * maxSize) / width;
-                        width = maxSize;
-                    } else if (height > maxSize) {
-                        width = (width * maxSize) / height;
-                        height = maxSize;
-                    }
-                    
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
-                };
-            });
-        }
-
-        async function compressVideo(videoBlob) {
-            if (!('VideoEncoder' in window)) {
-                console.warn('VideoEncoder not supported - using original video');
-                return videoBlob;
-            }
+                }
+            };
 
             try {
-                const videoElement = document.createElement('video');
-                videoElement.src = URL.createObjectURL(videoBlob);
-                await videoElement.play();
-                videoElement.pause();
-
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = Math.min(640, videoElement.videoWidth);
-                canvas.height = (canvas.width / videoElement.videoWidth) * videoElement.videoHeight;
-
-                const stream = canvas.captureStream();
-                const mediaRecorder = new MediaRecorder(stream, {
-                    mimeType: 'video/webm',
-                    videoBitsPerSecond: 1000000
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify({
+                        action: 'updateCloseout',
+                        data: data
+                    })
                 });
 
-                const chunks = [];
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.start();
-
-                const fps = 30;
-                const totalFrames = videoElement.duration * fps;
-
-                for (let i = 0; i < totalFrames; i++) {
-                    videoElement.currentTime = i * (1 / fps);
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                }
-
-                mediaRecorder.stop();
-                return await new Promise(resolve => {
-                    mediaRecorder.onstop = () => resolve(chunks[0]);
-                });
+                statusDiv.textContent = 'Submitted successfully!';
+                console.log('Submit response:', response);
             } catch (error) {
-                console.warn('Video compression failed:', error);
-                return videoBlob;
+                statusDiv.textContent = 'Error: ' + error.message;
+                console.error('Submit error:', error);
             }
         }
-
-        async function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        }
-
-        async function checkVideoDuration(videoBlob) {
-            return new Promise((resolve) => {
-                const video = document.createElement('video');
-                video.preload = 'metadata';
-                video.onloadedmetadata = () => {
-                    window.URL.revokeObjectURL(video.src);
-                    resolve(video.duration);
-                };
-                video.src = URL.createObjectURL(videoBlob);
-            });
-        }
-
-        async function sendInChunks(data, loadingElement) {
-            const chunkSize = 30000;
-            const serializedData = JSON.stringify(data);
-            const chunks = [];
-
-            for (let i = 0; i < serializedData.length; i += chunkSize) {
-                chunks.push(serializedData.slice(i, i + chunkSize));
-            }
-
-            for (let i = 0; i < chunks.length; i++) {
-                const chunkData = {
-                    chunk: chunks[i],
-                    index: i,
-                    total: chunks.length,
-                    isLast: i === chunks.length - 1,
-                    action: 'updateCloseout'  // Specify the action for the Google Apps Script
-                };
-
-                let retryCount = 0;
-                while (retryCount < MAX_RETRIES) {
-                    try {
-                        const response = await fetch(API_URL, {
-                            method: 'POST',
-                            mode: 'no-cors',
-                            headers: {
-                                'Content-Type': 'text/plain',
-                            },
-                            body: JSON.stringify(chunkData)
-                        });
-
-                        // With no-cors mode, we can't read the response
-                        // but if we get here without an error, consider it successful
-                        const progress = Math.round(((i + 1) / chunks.length) * 100);
-                        loadingElement.textContent = `Uploading... ${progress}%`;
-                        
-                        // Add a small delay between chunks
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        break;
-                    } catch (error) {
-                        retryCount++;
-                        if (retryCount === MAX_RETRIES) {
-                            throw new Error(`Failed to upload chunk ${i + 1}/${chunks.length}`);
-                        }
-                        loadingElement.textContent = `Retry ${retryCount}/${MAX_RETRIES}...`;
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                }
-            }
-        }
-
-        // Initial load
-        fetchWorkOrders();
     </script>
 </body>
 </html>
