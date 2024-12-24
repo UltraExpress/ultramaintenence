@@ -1,0 +1,532 @@
+<!-- 
+  This new form will submit:
+   - A ticket/row identifier (ticketId) so the script knows which row to update.
+   - status = "Awaiting Approval" to go into column F (assuming script is flexible).
+   - completeNotes, completePhoto, completeVideo for columns O, P, Q.
+  The script must be set up to handle these new keys. 
+-->
+<form id="ticketCompleteForm">
+  <div class="form-group">
+    <label for="ticketId">Ticket ID (or Row Identifier):</label>
+    <input type="text" id="ticketId" placeholder="e.g. Row #, Part ID, etc." required />
+  </div>
+
+  <div class="form-group">
+    <label for="techName">Technician Name:</label>
+    <input type="text" id="techName" placeholder="Optional, if needed." />
+  </div>
+
+  <div class="form-group">
+    <label for="completeNotes">Completion Notes:</label>
+    <textarea id="completeNotes" placeholder="What was done? Issues encountered?" required></textarea>
+  </div>
+
+  <div class="form-group">
+    <label>Completion Photo:</label>
+    <input type="file" id="completePhotoInput" accept="image/*" capture="environment" style="display: none;">
+    <button type="button" class="media-button" id="completePhotoButton">Take Completion Photo</button>
+    <img id="completePhotoPreview" class="preview" alt="Completion Photo Preview">
+  </div>
+
+  <div class="form-group">
+    <label>Completion Video (30s max):</label>
+    <input type="file" id="completeVideoInput" accept="video/*" capture="environment" style="display: none;">
+    <button type="button" class="media-button" id="completeVideoButton">Record Completion Video</button>
+    <div class="timer" id="completeVideoTimer">00:30</div>
+    <video id="completeVideoPreview" class="preview" controls></video>
+  </div>
+
+  <div class="loading" id="loadingMessage">Processing...</div>
+  <button type="submit" class="submit-button">Submit Completion</button>
+</form>
+</div>
+
+<script>
+
+/* -----------------------------------------------------
+
+GLOBALS & GEOLOCATION (Optional)
+
+----------------------------------------------------- */
+
+let currentPosition = null;
+
+navigator.geolocation.getCurrentPosition(
+
+pos => {
+
+currentPosition = {
+
+latitude: pos.coords.latitude,
+
+longitude: pos.coords.longitude
+
+};
+
+},
+
+err => {
+
+console.warn("Location not provided (optional). Error:", err);
+
+}
+
+);
+
+let isUploading = false;
+
+let photoData = null;
+
+let videoBlob = null;
+
+const MAX_RETRIES = 3;
+
+// Convert Blob to Base64
+
+async function blobToBase64(blob) {
+
+return new Promise((resolve, reject) => {
+
+const reader = new FileReader();
+
+reader.onloadend = () => resolve(reader.result);
+
+reader.onerror = reject;
+
+reader.readAsDataURL(blob);
+
+});
+
+}
+
+// Simple Image Compression (max 800px dimension, 0.7 quality)
+
+async function compressImage(base64String) {
+
+return new Promise(resolve => {
+
+const img = new Image();
+
+img.src = base64String;
+
+img.onload = () => {
+
+const canvas = document.createElement('canvas');
+
+const ctx = canvas.getContext('2d');
+
+let width = img.width;
+
+let height = img.height;
+
+const maxSize = 800;
+
+if (width > height && width > maxSize) {
+
+height = (height * maxSize) / width;
+
+width = maxSize;
+
+} else if (height > maxSize) {
+
+width = (width * maxSize) / height;
+
+height = maxSize;
+
+}
+
+canvas.width = width;
+
+canvas.height = height;
+
+ctx.drawImage(img, 0, 0, width, height);
+
+const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+resolve(compressedBase64);
+
+};
+
+});
+
+}
+
+// Basic 30s video check
+
+async function checkVideoDuration(blob) {
+
+return new Promise((resolve, reject) => {
+
+const tempVideo = document.createElement('video');
+
+tempVideo.preload = 'metadata';
+
+tempVideo.onloadedmetadata = () => {
+
+window.URL.revokeObjectURL(tempVideo.src);
+
+resolve(tempVideo.duration);
+
+};
+
+tempVideo.src = URL.createObjectURL(blob);
+
+});
+
+}
+
+// (Optional) Video compression
+
+async function compressVideo(blob) {
+
+// If you want to replicate your advanced approach here, do so.
+
+// For simplicity, we’ll just return the original.
+
+if (!('VideoEncoder' in window)) {
+
+console.warn('VideoEncoder not supported. Using original video file.');
+
+return blob;
+
+}
+
+return blob;
+
+}
+
+// Warn if user tries to leave mid-upload
+
+window.addEventListener('beforeunload', e => {
+
+if (isUploading) {
+
+e.preventDefault();
+
+e.returnValue = 'Upload in progress – leaving will cancel the upload.';
+
+}
+
+});
+
+/* -----------------------------------------------------
+
+PHOTO/VIDEO BUTTON HANDLERS
+
+----------------------------------------------------- */
+
+document.getElementById('completePhotoButton').addEventListener('click', () => {
+
+document.getElementById('completePhotoInput').click();
+
+});
+
+document.getElementById('completePhotoInput').addEventListener('change', e => {
+
+if (e.target.files && e.target.files[0]) {
+
+const file = e.target.files[0];
+
+const reader = new FileReader();
+
+reader.onload = evt => {
+
+photoData = evt.target.result;
+
+const preview = document.getElementById('completePhotoPreview');
+
+preview.src = photoData;
+
+preview.style.display = 'block';
+
+};
+
+reader.readAsDataURL(file);
+
+}
+
+});
+
+document.getElementById('completeVideoButton').addEventListener('click', () => {
+
+document.getElementById('completeVideoInput').click();
+
+});
+
+document.getElementById('completeVideoInput').addEventListener('change', e => {
+
+if (e.target.files && e.target.files[0]) {
+
+videoBlob = e.target.files[0];
+
+const videoUrl = URL.createObjectURL(videoBlob);
+
+const videoPreview = document.getElementById('completeVideoPreview');
+
+videoPreview.src = videoUrl;
+
+videoPreview.style.display = 'block';
+
+// Start 30s countdown just like your main app
+
+let timeLeft = 30;
+
+const timerElem = document.getElementById('completeVideoTimer');
+
+timerElem.style.display = 'block';
+
+const timerInterval = setInterval(() => {
+
+timeLeft--;
+
+timerElem.textContent = `00:${timeLeft.toString().padStart(2, '0')}`;
+
+if (timeLeft <= 0) {
+
+clearInterval(timerInterval);
+
+timerElem.style.display = 'none';
+
+}
+
+}, 1000);
+
+}
+
+});
+
+/* -----------------------------------------------------
+
+FORM SUBMISSION
+
+----------------------------------------------------- */
+
+document.getElementById('ticketCompleteForm').addEventListener('submit', async e => {
+
+e.preventDefault();
+
+const loadingEl = document.getElementById('loadingMessage');
+
+loadingEl.textContent = "Starting upload... please don't leave the page.";
+
+loadingEl.style.display = 'block';
+
+if (!currentPosition) {
+
+console.warn("No geolocation, continuing anyway...");
+
+}
+
+isUploading = true;
+
+try {
+
+// Check video length first
+
+if (videoBlob) {
+
+videoBlob = await compressVideo(videoBlob);
+
+const duration = await checkVideoDuration(videoBlob);
+
+if (duration > 30) {
+
+alert('Video must be 30 seconds or less. Please record a shorter video.');
+
+loadingEl.style.display = 'none';
+
+isUploading = false;
+
+return;
+
+}
+
+}
+
+// Gather form data
+
+const ticketId = document.getElementById('ticketId').value.trim();
+
+const techName = document.getElementById('techName').value.trim();
+
+const completeNotes = document.getElementById('completeNotes').value.trim();
+
+// Build object to send to Google Apps Script
+
+// We set "status" = "Awaiting Approval"
+
+// We also attach completeNotes, completePhoto, completeVideo
+
+// The script must handle these fields to place them in columns F, O, P, Q
+
+const dataObj = {
+
+ticketId,
+
+techName,
+
+status: "Awaiting Approval", // Column F
+
+completeNotes, // Column O
+
+};
+
+// Optionally add lat/lon
+
+if (currentPosition) {
+
+dataObj.latitude = currentPosition.latitude;
+
+dataObj.longitude = currentPosition.longitude;
+
+}
+
+// Compress photo if present
+
+if (photoData) {
+
+const compressed = await compressImage(photoData);
+
+// We'll call it "completePhoto" so the script can store it in Column P
+
+dataObj.completePhoto = compressed.split(',')[1] || compressed;
+
+}
+
+// Convert video to base64 if present
+
+if (videoBlob) {
+
+const videoB64 = await blobToBase64(videoBlob);
+
+// We'll call it "completeVideo" so the script can store it in Column Q
+
+dataObj.completeVideo = videoB64.split(',')[1] || videoB64;
+
+}
+
+// Convert dataObj to JSON, then chunk like your main app
+
+const serialized = JSON.stringify(dataObj);
+
+const chunks = [];
+
+const chunkSize = 30000; // or whatever size you prefer
+
+for (let i = 0; i < serialized.length; i += chunkSize) {
+
+chunks.push(serialized.slice(i, i + chunkSize));
+
+}
+
+// Upload each chunk with retry logic
+
+for (let i = 0; i < chunks.length; i++) {
+
+const chunkData = {
+
+chunk: chunks[i],
+
+index: i,
+
+total: chunks.length,
+
+isLast: (i === chunks.length - 1)
+
+};
+
+let retryCount = 0;
+
+while (retryCount < MAX_RETRIES) {
+
+try {
+
+// Use the same endpoint as your main app
+
+await fetch("https://script.google.com/macros/s/AKfycbz7blJPKrmYhxCczyop4J6ObxDptjfzfYTiJTRrN-3q4WRIiQbPhoBOj4-MTl6UherQiA/exec", {
+
+method: 'POST',
+
+mode: 'no-cors', // same as your main app
+
+headers: { 'Content-Type': 'text/plain' },
+
+body: JSON.stringify(chunkData)
+
+});
+
+// If success, update progress
+
+const progress = Math.round( ((i+1) / chunks.length) * 100 );
+
+loadingEl.textContent = `Uploading... ${progress}%`;
+
+break;
+
+} catch (err) {
+
+retryCount++;
+
+if (retryCount === MAX_RETRIES) {
+
+throw new Error(`Failed uploading chunk ${i+1}/${chunks.length} after ${MAX_RETRIES} attempts`);
+
+}
+
+loadingEl.textContent = `Retrying chunk ${i+1}/${chunks.length}... (attempt ${retryCount})`;
+
+await new Promise(res => setTimeout(res, 2000));
+
+}
+
+}
+
+}
+
+// All chunks done
+
+isUploading = false;
+
+loadingEl.textContent = 'Ticket completion submitted!';
+
+// Reset UI after a short pause
+
+setTimeout(() => {
+
+loadingEl.style.display = 'none';
+
+e.target.reset();
+
+document.getElementById('completePhotoPreview').style.display = 'none';
+
+document.getElementById('completeVideoPreview').style.display = 'none';
+
+photoData = null;
+
+videoBlob = null;
+
+}, 2000);
+
+} catch (error) {
+
+console.error("Error completing ticket:", error);
+
+isUploading = false;
+
+loadingEl.textContent = 'Error submitting completion. Please try again.';
+
+setTimeout(() => {
+
+loadingEl.style.display = 'none';
+
+}, 3000);
+
+}
+
+});
+
+</script>
+
+</body>
+
+</html>
