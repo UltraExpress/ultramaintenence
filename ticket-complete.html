@@ -1,56 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Test</title>
+    <title>Script Test</title>
     <style>
-        button, select, input { display: block; width: 100%; padding: 10px; margin: 10px 0; }
+        body { max-width: 600px; margin: 20px auto; padding: 20px; }
+        select, button, input { display: block; width: 100%; padding: 10px; margin: 10px 0; }
         #preview { max-width: 100%; display: none; margin: 10px 0; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
     </style>
 </head>
 <body>
-    <select id="partSelect">
-        <option value="">Select Part</option>
-    </select>
-
+    <h2>Test Functions</h2>
+    
+    <button onclick="loadTickets()">1. Load Tickets</button>
+    <select id="ticketSelect"><option>Select ticket...</option></select>
+    
     <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none">
-    <button onclick="document.getElementById('photoInput').click()">Take Photo</button>
+    <button onclick="document.getElementById('photoInput').click()">2. Take Photo</button>
     <img id="preview">
-
-    <input type="text" id="notes" placeholder="Enter completion notes">
-    <div id="status"></div>
-
-    <button onclick="submitForm()">Update Status & Submit</button>
+    
+    <input type="text" id="notes" placeholder="3. Enter notes">
+    
+    <button onclick="submitUpdate()">4. Submit Update</button>
+    
+    <pre id="log">Logs will appear here...</pre>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7blJPKrmYhxCczyop4J6ObxDptjfzfYTiJTRrN-3q4WRIiQbPhoBOj4-MTl6UherQiA/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2DhThuin2M6_TfL7thQ6X5GWgKn2v5084pbcvs7JGdbAdAxq_SjSK87Z52e3LUPjRHQ/exec';
         let photoData = null;
-        let partsData = null;
-
-        // Load Parts - using no-cors and URLSearchParams
-        async function loadParts() {
+        
+        async function loadTickets() {
+            log('Loading tickets...');
             try {
-                const response = await fetch(SCRIPT_URL + '?action=getAllData', {
-                    method: 'GET',
-                    mode: 'no-cors'
-                });
+                const response = await fetch(`${SCRIPT_URL}?action=getTickets`);
+                const data = await response.json();
                 
-                // Mock data for testing since no-cors won't let us read response
-                partsData = [
-                    { partId: "test1", partName: "Test Part 1" },
-                    { partId: "test2", partName: "Test Part 2" }
-                ];
-                
-                const select = document.getElementById('partSelect');
-                select.innerHTML = '<option value="">Select Part</option>' + 
-                    partsData.map(item => 
-                        `<option value="${item.partId}">${item.partName}</option>`
+                if (data.status === 'success') {
+                    const select = document.getElementById('ticketSelect');
+                    select.innerHTML = data.data.map(ticket => 
+                        `<option value="${ticket.partId}">${ticket.partName} - ${ticket.status}</option>`
                     ).join('');
+                    log('Tickets loaded successfully');
+                } else {
+                    throw new Error(data.message);
+                }
             } catch (error) {
-                console.error('Load error:', error);
+                log('Error loading tickets: ' + error);
             }
         }
-
-        // Take Image
+        
         document.getElementById('photoInput').addEventListener('change', function(e) {
             if (e.target.files && e.target.files[0]) {
                 const reader = new FileReader();
@@ -58,70 +56,54 @@
                     photoData = e.target.result;
                     document.getElementById('preview').src = photoData;
                     document.getElementById('preview').style.display = 'block';
+                    log('Photo loaded');
                 };
                 reader.readAsDataURL(e.target.files[0]);
             }
         });
-
-        // Submit
-        async function submitForm() {
-            const partId = document.getElementById('partSelect').value;
+        
+        async function submitUpdate() {
+            const partId = document.getElementById('ticketSelect').value;
             const notes = document.getElementById('notes').value;
             
             if (!partId || !photoData || !notes) {
-                alert('Please fill all fields and take photo');
+                log('Please select ticket, take photo, and enter notes');
                 return;
             }
-
-            const status = document.getElementById('status');
-            status.textContent = 'Uploading...';
-
+            
+            log('Submitting update...');
             try {
-                const selectedPart = partsData.find(p => p.partId === partId);
-                const data = {
-                    partId: selectedPart.partId,
-                    partName: selectedPart.partName,
-                    photo: photoData.split(',')[1],
-                    status: 'pending complete',
-                    notes: notes,
-                    location: 'CLOSEOUT',
-                    name: 'test',
-                    timestamp: new Date().toISOString()
-                };
-
-                const serializedData = JSON.stringify(data);
-                const chunks = [];
-                for (let i = 0; i < serializedData.length; i += 30000) {
-                    chunks.push(serializedData.slice(i, i + 30000));
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        partId: partId,
+                        notes: notes,
+                        photo: photoData.split(',')[1]
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    log('Update successful');
+                    document.getElementById('preview').style.display = 'none';
+                    document.getElementById('notes').value = '';
+                    photoData = null;
+                } else {
+                    throw new Error(result.message);
                 }
-
-                for (let i = 0; i < chunks.length; i++) {
-                    await fetch(SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: {'Content-Type': 'text/plain'},
-                        body: JSON.stringify({
-                            chunk: chunks[i],
-                            index: i,
-                            total: chunks.length,
-                            isLast: i === chunks.length - 1
-                        })
-                    });
-                    status.textContent = `Uploading... ${Math.round(((i + 1) / chunks.length) * 100)}%`;
-                }
-
-                status.textContent = 'Complete!';
-                document.getElementById('preview').style.display = 'none';
-                document.getElementById('notes').value = '';
-                photoData = null;
-
             } catch (error) {
-                status.textContent = 'Error: ' + error;
+                log('Error submitting update: ' + error);
             }
         }
-
-        // Load parts on startup
-        loadParts();
+        
+        function log(message) {
+            const logElement = document.getElementById('log');
+            logElement.textContent = new Date().toLocaleTimeString() + ': ' + message + '\n' + logElement.textContent;
+        }
+        
+        // Load tickets on startup
+        loadTickets();
     </script>
 </body>
 </html>
