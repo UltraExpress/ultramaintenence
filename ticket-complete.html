@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Script for Google Sheets</title>
+    <title>Google Sheets API Test</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -60,7 +60,7 @@
         const fetchDataButton = document.getElementById('fetchDataButton');
         const postDataButton = document.getElementById('postDataButton');
 
-        // Fetch all data
+        // Fetch all data using the structure of the working app
         fetchDataButton.addEventListener('click', async () => {
             responseOutput.textContent = "Fetching data...";
             try {
@@ -77,14 +77,15 @@
             }
         });
 
-        // Post data to update "Status" column
+        // Post data to update "Status" column for Part ID: 9_rsdp5
         postDataButton.addEventListener('click', async () => {
             responseOutput.textContent = "Posting data...";
             try {
                 const payload = {
-                    partId: "9_rsdp5",
-                    columnName: "Status",
-                    newValue: "Needs Approval"
+                    action: "updateStatus", // Include the action explicitly
+                    partId: "9_rsdp5", // Ensure the Part ID matches
+                    columnName: "Status", // Column name to update
+                    newValue: "Needs Approval" // Value to set
                 };
 
                 const response = await fetch(API_URL, {
@@ -109,3 +110,4 @@
     </script>
 </body>
 </html>
+
