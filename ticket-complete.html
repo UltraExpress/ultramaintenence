@@ -28,7 +28,7 @@
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        input, select {
+        select, input {
             width: 100%;
             padding: 8px;
             margin: 5px 0 15px;
@@ -56,79 +56,83 @@
     </style>
 </head>
 <body>
-    <div class="version">v1.0</div>
+    <div class="version">v1.1</div>
     <div class="container">
         <h2>Sheet Test App</h2>
         
         <div>
-            <label>Part ID (existing from sheet):</label>
-            <input type="text" id="partId">
+            <label>Select Part ID:</label>
+            <select id="partId">
+                <option value="19_smdp1">19_smdp1 - Fragrance</option>
+                <option value="8_exp1">8_exp1 - Soap Arch #2</option>
+                <option value="10_zdp1">10_zdp1 - Van High Brush Motor</option>
+            </select>
         </div>
 
         <div>
-            <label>Status (Column F):</label>
-            <input type="text" id="status" value="Awaiting Approval">
+            <label>Status Update (Column F):</label>
+            <select id="status">
+                <option value="Awaiting Approval">Awaiting Approval</option>
+                <option value="Complete">Complete</option>
+            </select>
         </div>
 
         <div>
             <label>Complete Notes (Column O):</label>
-            <input type="text" id="completeNotes" value="Test notes">
+            <input type="text" id="completeNotes" value="Test closeout note">
         </div>
 
         <div>
             <label>Complete Photo Link (Column P):</label>
-            <input type="text" id="completePhoto" value="Test photo link">
+            <input type="text" id="completePhoto" value="https://res.cloudinary.com/dirdh3xvx/test-photo">
         </div>
 
         <div>
             <label>Complete Video Link (Column Q):</label>
-            <input type="text" id="completeVideo" value="Test video link">
+            <input type="text" id="completeVideo" value="https://res.cloudinary.com/dirdh3xvx/test-video">
         </div>
 
         <button onclick="submitTest()">Submit Test Update</button>
-        <div id="status" class="status"></div>
+        <div id="statusMsg" class="status"></div>
     </div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
         
         async function submitTest() {
-            const statusDiv = document.querySelector('.status');
+            const statusDiv = document.getElementById('statusMsg');
             statusDiv.style.display = 'block';
             statusDiv.textContent = 'Submitting...';
 
             const data = {
                 partId: document.getElementById('partId').value,
-                status: document.getElementById('status').value,
-                completeNotes: document.getElementById('completeNotes').value,
-                completePhoto: document.getElementById('completePhoto').value,
-                completeVideo: document.getElementById('completeVideo').value,
-                columnMappings: {
-                    'status': 'F',
-                    'completeNotes': 'O',
-                    'completePhoto': 'P',
-                    'completeVideo': 'Q'
+                updates: {
+                    'F': document.getElementById('status').value,
+                    'O': document.getElementById('completeNotes').value,
+                    'P': document.getElementById('completePhoto').value,
+                    'Q': document.getElementById('completeVideo').value
                 }
             };
 
             try {
+                console.log('Sending data:', data);
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: {
-                        'Content-Type': 'text/plain',
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        action: 'updateCloseout',
+                        action: 'updateColumns',
                         data: data
                     })
                 });
 
-                statusDiv.textContent = 'Submitted successfully!';
-                console.log('Submit response:', response);
+                statusDiv.textContent = 'Submitted! Check sheet for changes.';
+                console.log('Response:', response);
             } catch (error) {
                 statusDiv.textContent = 'Error: ' + error.message;
-                console.error('Submit error:', error);
+                console.error('Error:', error);
             }
         }
     </script>
