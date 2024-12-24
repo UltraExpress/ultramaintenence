@@ -521,30 +521,43 @@ document.getElementById('maintenanceForm').addEventListener('submit', async func
             }
         }
 
-        // Handle photo compression and upload
-        let photoUrl = null;
-        if (photoData) {
-            const compressedPhoto = await compressImage(photoData);
-            const photoFile = base64ToFile(compressedPhoto, `photo_${Date.now()}.jpg`);
-            const { data: photoUpload, error: photoError } = await supabase.storage
-                .from('maintenance-photos')
-                .upload(`${Date.now()}_photo.jpg`, photoFile);
-            
-            if (photoError) throw photoError;
-            photoUrl = `${supabaseUrl}/storage/v1/object/public/maintenance-photos/${photoUpload.path}`;
-        }
+// Handle photo compression and upload
+let photoUrl = null;
+if (photoData) {
+    const compressedPhoto = await compressImage(photoData);
+    const photoFile = base64ToFile(compressedPhoto, `photo_${Date.now()}.jpg`);
+    const { data: photoUpload, error: photoError } = await supabase.storage
+        .from('media')  // Changed from 'maintenance-photos' to 'media'
+        .upload(`photos/${Date.now()}_photo.jpg`, photoFile);  // Added 'photos/' folder
+    
+    if (photoError) throw photoError;
+    photoUrl = `${supabaseUrl}/storage/v1/object/public/media/photos/${photoUpload.path}`;
+}
 
-        // Handle video upload
-        let videoUrl = null;
-        if (videoBlob) {
-            const { data: videoUpload, error: videoError } = await supabase.storage
-                .from('maintenance-videos')
-                .upload(`${Date.now()}_video.webm`, videoBlob);
-            
-            if (videoError) throw videoError;
-            videoUrl = `${supabaseUrl}/storage/v1/object/public/maintenance-videos/${videoUpload.path}`;
-        }
 
+
+
+        
+// Handle video upload
+let videoUrl = null;
+if (videoBlob) {
+    const { data: videoUpload, error: videoError } = await supabase.storage
+        .from('media')  // Changed from 'maintenance-videos' to 'media'
+        .upload(`videos/${Date.now()}_video.webm`, videoBlob);  // Added 'videos/' folder
+    
+    if (videoError) throw videoError;
+    videoUrl = `${supabaseUrl}/storage/v1/object/public/media/videos/${videoUpload.path}`;
+}
+
+
+
+
+
+
+
+
+
+        
         // Insert report data into Supabase
         const { data, error } = await supabase
             .from('maintenance_reports')
@@ -577,11 +590,24 @@ document.getElementById('maintenanceForm').addEventListener('submit', async func
             videoBlob = null;
         }, 2000);
 
-    } catch (error) {
+} catch (error) {
         isUploading = false;
-        console.error("Submission error:", error);
-        loading.textContent = 'Error submitting report. Please try again.';
-        setTimeout(() => loading.style.display = 'none', 3000);
+        console.error("Submission error details:", error);
+        
+        // More descriptive error message based on the type of error
+        let errorMessage = 'Error submitting report. ';
+        
+        if (error.error && error.error.message) {
+            console.log('Storage error:', error.error);
+            errorMessage += error.error.message;
+        } else if (error.message) {
+            console.log('General error:', error);
+            errorMessage += error.message;
+        }
+        
+        loading.textContent = errorMessage;
+        alert(errorMessage); // Added to make sure we see the error
+        setTimeout(() => loading.style.display = 'none', 5000); // Increased timeout to read error
     }
 });
     </script>
