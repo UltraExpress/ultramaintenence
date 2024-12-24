@@ -1,98 +1,215 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Photo Upload Test</title>
+    <title>Sheet Test</title>
     <style>
-        .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
-        .status { margin: 10px 0; color: blue; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .item { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px;
+        }
+        .status { 
+            margin: 10px 0; 
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        select { 
+            margin: 5px 0; 
+            padding: 5px; 
+            width: 200px;
+        }
+        .preview {
+            max-width: 300px;
+            display: none;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .loading {
+            display: none;
+            color: #666;
+            font-style: italic;
+        }
+        .media-button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        .media-button:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 <body>
-    <h2>Photo Upload Test</h2>
-    <div id="statusMessage" class="status">Ready</div>
-    <div id="itemsList"></div>
+    <h2>Sheet Communication Test</h2>
+    <div id="status" class="status">Ready</div>
+    <div class="loading" id="loading">Processing...</div>
+    <div id="items"></div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        
-        async function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
+        let photoData = null;
+
+        // Image compression function from maintenance app
+        async function compressImage(base64String) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = base64String;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Calculate new dimensions (max 800px width/height)
+                    let width = img.width;
+                    let height = img.height;
+                    const maxSize = 800;
+                    
+                    if (width > height && width > maxSize) {
+                        height = (height * maxSize) / width;
+                        width = maxSize;
+                    } else if (height > maxSize) {
+                        width = (width * maxSize) / height;
+                        height = maxSize;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
             });
         }
 
-        async function uploadImage(partId, file) {
-            const status = document.getElementById('statusMessage');
-            try {
-                status.textContent = 'Converting image...';
-                const base64Data = await blobToBase64(file);
-                
-                status.textContent = 'Sending to server...';
-                const formData = new FormData();
-                formData.append('partId', partId);
-                formData.append('photo', base64Data.split(',')[1]);
-                formData.append('timestamp', new Date().toISOString());
+        async function handlePhotoUpload(partId) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.capture = 'environment';
 
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({
-                        chunk: JSON.stringify(Object.fromEntries(formData)),
-                        index: 0,
-                        total: 1,
-                        isLast: true
-                    })
-                });
+            input.onchange = async function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const loading = document.getElementById('loading');
+                    loading.style.display = 'block';
+                    
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        try {
+                            // Compress the image
+                            const compressedPhoto = await compressImage(e.target.result);
+                            
+                            // Prepare the data
+                            const formData = {
+                                partId: partId,
+                                completePhoto: compressedPhoto.split(',')[1]
+                            };
 
-                status.textContent = 'Upload complete - refreshing...';
-                setTimeout(fetchItems, 2000);
-            } catch (error) {
-                status.textContent = 'Upload Error: ' + error.message;
-                console.error('Error:', error);
-            }
+                            // Send to API in chunks
+                            const serializedData = JSON.stringify(formData);
+                            const chunkSize = 30000;
+                            const chunks = [];
+
+                            for (let i = 0; i < serializedData.length; i += chunkSize) {
+                                chunks.push(serializedData.slice(i, i + chunkSize));
+                            }
+
+                            // Send each chunk
+                            for (let i = 0; i < chunks.length; i++) {
+                                const chunkData = {
+                                    chunk: chunks[i],
+                                    index: i,
+                                    total: chunks.length,
+                                    isLast: i === chunks.length - 1
+                                };
+
+                                await fetch(API_URL, {
+                                    method: 'POST',
+                                    mode: 'no-cors',
+                                    headers: {
+                                        'Content-Type': 'text/plain',
+                                    },
+                                    body: JSON.stringify(chunkData)
+                                });
+                            }
+
+                            document.getElementById('status').textContent = 'Photo uploaded successfully!';
+                            setTimeout(fetchItems, 1000);
+                        } catch (error) {
+                            document.getElementById('status').textContent = 'Error uploading photo: ' + error.message;
+                        } finally {
+                            loading.style.display = 'none';
+                        }
+                    };
+                    reader.readAsDataURL(e.target.files[0]);
+                }
+            };
+
+            input.click();
         }
 
-        function handleImageSelect(partId, input) {
-            const file = input.files[0];
-            if (file) {
-                uploadImage(partId, file);
+        async function updateStatus(partId, newStatus) {
+            document.getElementById('status').textContent = 'Updating status...';
+            try {
+                await fetch(
+                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Status&newValue=${newStatus}`,
+                    { mode: 'no-cors' }
+                );
+                document.getElementById('status').textContent = 'Status updated!';
+                setTimeout(fetchItems, 1000);
+            } catch (error) {
+                document.getElementById('status').textContent = 'Update Error: ' + error.message;
             }
         }
 
         async function fetchItems() {
-            const status = document.getElementById('statusMessage');
-            status.textContent = 'Loading...';
+            document.getElementById('status').textContent = 'Loading...';
             try {
                 const response = await fetch(`${API_URL}?action=getAllData`);
                 const result = await response.json();
                 
                 if (result.status === "success" && Array.isArray(result.data)) {
                     const items = result.data.slice(0, 3);
-                    document.getElementById('itemsList').innerHTML = items.map((item, index) => {
+                    const itemsHtml = items.map(item => {
                         const partName = item["Part Name"] || '';
                         const partId = item["Part ID"] || '';
-                        const photo = item["Complete Photo"] || 'None';
+                        const status = item["Status"] || '';
+                        const completePhoto = item["Complete Photo"] || 'None';
                         
                         return `
                             <div class="item">
                                 <strong>${partName}</strong><br>
                                 ID: ${partId}<br>
-                                Complete Photo: ${photo}<br>
-                                <input type="file" 
-                                       id="file-${index}"
-                                       name="file-${index}"
-                                       accept="image/*" 
-                                       onchange="handleImageSelect('${partId}', this)">
+                                Status: 
+                                <select onchange="updateStatus('${partId}', this.value)">
+                                    <option value="Needs Work" ${status === 'Needs Work' ? 'selected' : ''}>Needs Work</option>
+                                    <option value="Parts On Order" ${status === 'Parts On Order' ? 'selected' : ''}>Parts On Order</option>
+                                    <option value="In Progress" ${status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                    <option value="Complete" ${status === 'Complete' ? 'selected' : ''}>Complete</option>
+                                </select><br>
+                                Complete Photo: ${completePhoto}<br>
+                                <button class="media-button" onclick="handlePhotoUpload('${partId}')">
+                                    Upload Complete Photo
+                                </button>
                             </div>
                         `;
                     }).join('');
-                    status.textContent = 'Ready';
+                    
+                    document.getElementById('items').innerHTML = itemsHtml;
+                    document.getElementById('status').textContent = 'Data loaded!';
                 }
             } catch (error) {
-                status.textContent = 'Load Error: ' + error.message;
+                document.getElementById('status').textContent = 'Load Error: ' + error.message;
                 console.error('Error:', error);
             }
         }
