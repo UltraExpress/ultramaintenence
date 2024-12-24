@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sheet Test App</title>
+    <title>Complete Notes Test</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,15 +12,6 @@
             padding: 20px;
             background: #13111C;
             color: white;
-        }
-        .version {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(79, 172, 254, 0.1);
-            padding: 5px 10px;
-            border-radius: 5px;
-            color: #4facfe;
         }
         .container {
             background: #1a1825;
@@ -56,9 +47,8 @@
     </style>
 </head>
 <body>
-    <div class="version">v1.1</div>
     <div class="container">
-        <h2>Sheet Test App</h2>
+        <h2>Complete Notes Update Test - v1.4</h2>
         
         <div>
             <label>Select Part ID:</label>
@@ -70,65 +60,40 @@
         </div>
 
         <div>
-            <label>Status Update (Column F):</label>
-            <select id="status">
-                <option value="Awaiting Approval">Awaiting Approval</option>
-                <option value="Complete">Complete</option>
-            </select>
+            <label>Complete Notes:</label>
+            <input type="text" id="completeNotes" value="Test note">
         </div>
 
-        <div>
-            <label>Complete Notes (Column O):</label>
-            <input type="text" id="completeNotes" value="Test closeout note">
-        </div>
-
-        <div>
-            <label>Complete Photo Link (Column P):</label>
-            <input type="text" id="completePhoto" value="https://res.cloudinary.com/dirdh3xvx/test-photo">
-        </div>
-
-        <div>
-            <label>Complete Video Link (Column Q):</label>
-            <input type="text" id="completeVideo" value="https://res.cloudinary.com/dirdh3xvx/test-video">
-        </div>
-
-        <button onclick="submitTest()">Submit Test Update</button>
+        <button onclick="submitNoteUpdate()">Update Complete Notes</button>
         <div id="statusMsg" class="status"></div>
     </div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        
-        async function submitTest() {
+
+        async function submitNoteUpdate() {
             const statusDiv = document.getElementById('statusMsg');
             statusDiv.style.display = 'block';
             statusDiv.textContent = 'Submitting...';
 
             const data = {
                 partId: document.getElementById('partId').value,
-                updates: {
-                    'F': document.getElementById('status').value,
-                    'O': document.getElementById('completeNotes').value,
-                    'P': document.getElementById('completePhoto').value,
-                    'Q': document.getElementById('completeVideo').value
-                }
+                columnName: 'Complete Notes',
+                newValue: document.getElementById('completeNotes').value
             };
 
             try {
-                console.log('Sending data:', data);
-                const response = await fetch(API_URL, {
+                console.log('Sending update:', data);
+                const response = await fetch(`${API_URL}?action=updateStatus`, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'text/plain',
                     },
-                    body: JSON.stringify({
-                        action: 'updateColumns',
-                        data: data
-                    })
+                    body: JSON.stringify(data)
                 });
 
-                statusDiv.textContent = 'Submitted! Check sheet for changes.';
+                statusDiv.textContent = 'Update sent! Check sheet.';
                 console.log('Response:', response);
             } catch (error) {
                 statusDiv.textContent = 'Error: ' + error.message;
