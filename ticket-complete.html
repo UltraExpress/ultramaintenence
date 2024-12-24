@@ -2,29 +2,62 @@
 <html>
 <head>
     <title>Sheet Test</title>
+    <style>
+        .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .status { margin: 10px 0; color: blue; }
+    </style>
 </head>
 <body>
-    <div id="status">Loading...</div>
-    <pre id="data"></pre>
+    <h2>Sheet Communication Test</h2>
+    <div id="status" class="status">Ready</div>
+    <div id="items"></div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
-        
-        async function test() {
-            document.getElementById('status').textContent = 'Fetching data...';
+
+        async function testWrite(partId) {
+            document.getElementById('status').textContent = 'Writing...';
             try {
-                const response = await fetch(`${API_URL}?action=getAllData`);
-                document.getElementById('status').textContent = 'Got response...';
-                const data = await response.json();
-                document.getElementById('status').textContent = 'Success!';
-                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+                await fetch(
+                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Notes&newValue=TEST+NOTE`,
+                    { mode: 'no-cors' }
+                );
+                document.getElementById('status').textContent = 'Write successful!';
+                // Refresh data after 1 second
+                setTimeout(fetchItems, 1000);
             } catch (error) {
-                document.getElementById('status').textContent = 'Error: ' + error.message;
-                console.error('Full error:', error);
+                document.getElementById('status').textContent = 'Write Error: ' + error.message;
             }
         }
 
-        test();
+        async function fetchItems() {
+            document.getElementById('status').textContent = 'Loading...';
+            try {
+                const response = await fetch(`${API_URL}?action=getAllData`);
+                const result = await response.json();
+                
+                if (result.status === "success" && Array.isArray(result.data)) {
+                    const items = result.data.slice(0, 3); // Just show first 3
+                    document.getElementById('items').innerHTML = items.map(item => `
+                        <div class="item">
+                            <strong>${item.Part Name || item.partName}</strong><br>
+                            ID: ${item.Part ID || item.partId}<br>
+                            Status: ${item.Status}<br>
+                            Complete Notes: ${item['Complete Notes'] || 'None'}<br>
+                            <button onclick="testWrite('${item.Part ID || item.partId}')">
+                                Add Test Note
+                            </button>
+                        </div>
+                    `).join('');
+                    document.getElementById('status').textContent = 'Data loaded!';
+                }
+            } catch (error) {
+                document.getElementById('status').textContent = 'Load Error: ' + error.message;
+            }
+        }
+
+        // Initial load
+        fetchItems();
     </script>
 </body>
 </html>
