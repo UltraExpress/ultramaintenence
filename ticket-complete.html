@@ -1,72 +1,128 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Column P Test</title>
+    <title>Upload Test</title>
     <style>
         body { font-family: Arial; padding: 20px; }
-        .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
         .status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
-        button { padding: 5px 10px; }
+        img.preview { max-width: 300px; display: none; margin: 10px 0; }
+        .loading { display: none; color: #666; }
     </style>
 </head>
 <body>
-    <h2>Column P Write Test</h2>
+    <h2>Upload Test</h2>
     <div id="status" class="status">Ready</div>
-    <div id="items"></div>
+    <div id="loading" class="loading">Processing...</div>
+    <button onclick="document.getElementById('photoInput').click()">Take Photo</button>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none">
+    <img id="photoPreview" class="preview">
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
+        let photoData = null;
 
-        async function writeToColumnP(partId) {
-            document.getElementById('status').textContent = 'Writing to column P...';
-            try {
-                await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Photo&newValue=TEST_URL_${new Date().getTime()}`,
-                    { mode: 'no-cors' }
-                );
-                document.getElementById('status').textContent = 'Write successful!';
-                setTimeout(fetchItems, 1000);
-            } catch (error) {
-                document.getElementById('status').textContent = 'Write Error: ' + error.message;
-            }
-        }
-
-        async function fetchItems() {
-            document.getElementById('status').textContent = 'Loading...';
-            try {
-                const response = await fetch(`${API_URL}?action=getAllData`);
-                const result = await response.json();
-                
-                if (result.status === "success" && Array.isArray(result.data)) {
-                    const items = result.data.slice(0, 3);
-                    const itemsHtml = items.map(item => {
-                        const partName = item["Part Name"] || '';
-                        const partId = item["Part ID"] || '';
-                        const completePhoto = item["Complete Photo"] || 'None';
-                        
-                        return `
-                            <div class="item">
-                                <strong>${partName}</strong><br>
-                                ID: ${partId}<br>
-                                Current Complete Photo value: ${completePhoto}<br>
-                                <button onclick="writeToColumnP('${partId}')">
-                                    Write Test Value to Column P
-                                </button>
-                            </div>
-                        `;
-                    }).join('');
+        // Compression function - exact same as maintenance app
+        async function compressImage(base64String) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = base64String;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
                     
-                    document.getElementById('items').innerHTML = itemsHtml;
-                    document.getElementById('status').textContent = 'Ready';
-                }
-            } catch (error) {
-                document.getElementById('status').textContent = 'Load Error: ' + error.message;
-                console.error('Error:', error);
-            }
+                    let width = img.width;
+                    let height = img.height;
+                    const maxSize = 800;
+                    
+                    if (width > height && width > maxSize) {
+                        height = (height * maxSize) / width;
+                        width = maxSize;
+                    } else if (height > maxSize) {
+                        width = (width * maxSize) / height;
+                        height = maxSize;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            });
         }
 
-        // Initial load
-        fetchItems();
+        // Handle photo input - exact same as maintenance app
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoData = e.target.result;
+                    document.getElementById('photoPreview').src = photoData;
+                    document.getElementById('photoPreview').style.display = 'block';
+                    uploadPhoto();
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // Upload function - exact same chunking as maintenance app
+        async function uploadPhoto() {
+            if (!photoData) return;
+            
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+            loading.style.display = 'block';
+            
+            try {
+                // Compress image
+                const compressedPhoto = await compressImage(photoData);
+                
+                // Prepare the data exactly like maintenance app
+                const formData = {
+                    location: "TEST",
+                    name: "TEST",
+                    partId: "TEST_" + Date.now(),
+                    partName: "TEST PART",
+                    photo: compressedPhoto.split(',')[1]
+                };
+
+                // Split into chunks - exact same as maintenance app
+                const serializedData = JSON.stringify(formData);
+                const chunkSize = 30000;
+                const chunks = [];
+
+                for (let i = 0; i < serializedData.length; i += chunkSize) {
+                    chunks.push(serializedData.slice(i, i + chunkSize));
+                }
+
+                // Send chunks
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunkData = {
+                        chunk: chunks[i],
+                        index: i,
+                        total: chunks.length,
+                        isLast: i === chunks.length - 1
+                    };
+
+                    loading.textContent = `Uploading chunk ${i + 1}/${chunks.length}`;
+
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'text/plain',
+                        },
+                        body: JSON.stringify(chunkData)
+                    });
+                }
+
+                status.textContent = 'Upload complete!';
+            } catch (error) {
+                status.textContent = 'Error: ' + error.message;
+                console.error('Upload error:', error);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>
