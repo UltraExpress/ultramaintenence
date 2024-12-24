@@ -8,164 +8,126 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f9f9f9;
+            background-color: #f4f4f9;
         }
-
-        h1, h2 {
+        h1 {
             color: #333;
         }
-
-        .version {
-            font-size: 12px;
-            color: gray;
-            margin-bottom: 20px;
-        }
-
         button {
-            padding: 10px 20px;
-            margin: 10px 5px;
-            font-size: 16px;
             background-color: #007bff;
             color: white;
             border: none;
-            border-radius: 5px;
+            padding: 10px 20px;
+            margin: 5px;
             cursor: pointer;
+            border-radius: 5px;
         }
-
         button:hover {
             background-color: #0056b3;
         }
-
-        pre {
-            background-color: #333;
-            color: #f4f4f4;
-            padding: 15px;
+        .response {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-top: 10px;
             border-radius: 5px;
             overflow-x: auto;
-            margin-top: 20px;
+            border: 1px solid #ccc;
         }
-
-        .button-container {
-            margin-bottom: 20px;
+        .version {
+            color: gray;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
     <h1>Google Sheets API Multi-Test</h1>
-    <div class="version">Version: 2.0</div>
+    <p class="version">Version 1.4</p>
 
-    <p>This page tests multiple GET and POST operations on the backend:</p>
+    <h2>GET Tests:</h2>
+    <button onclick="testGetAllData()">Test 1: Fetch All Data</button>
+    <button onclick="testGetStats()">Test 2: Fetch Maintenance Stats</button>
+    <button onclick="testGetReports()">Test 3: Fetch Maintenance Reports</button>
 
-    <div class="button-container">
-        <h2>GET Tests:</h2>
-        <button id="getAllData">Get All Data</button>
-        <button id="getReports">Get Maintenance Reports</button>
-        <button id="getStats">Get Maintenance Stats</button>
-    </div>
+    <h2>POST Tests:</h2>
+    <button onclick="testPostNotes1()">Test 4: Update Notes (Part ID: 9_rsdp5)</button>
+    <button onclick="testPostNotes2()">Test 5: Update Notes (Part ID: 19_rmdp1)</button>
 
-    <div class="button-container">
-        <h2>POST Tests:</h2>
-        <button id="updateNotesTest">Update Notes for Part ID: 9_rsdp5</button>
-        <button id="updateStatusTest">Update Status for Part ID: 9_rsdp5</button>
-    </div>
-
-    <h2>Response:</h2>
-    <pre id="responseOutput">Click a button to test...</pre>
+    <h3>Response:</h3>
+    <div id="response" class="response">Response will appear here...</div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbyg8lCbqvnwdOmIHGZSWJCBsXbta1McPyBtI-6OYtHmPzA0dwFEWIFUNAMAicZKTIrfUg/exec";
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyg8lCbqvnwdOmIHGZSWJCBsXbta1McPyBtI-6OYtHmPzA0dwFEWIFUNAMAicZKTIrfUg/exec';
 
-        const responseOutput = document.getElementById('responseOutput');
+        // Helper to update response box
+        function updateResponse(message) {
+            document.getElementById('response').textContent = typeof message === 'string' ? message : JSON.stringify(message, null, 2);
+        }
 
-        // Helper function for GET requests
-        async function performGetRequest(action) {
+        // GET Tests
+        async function testGetAllData() {
             try {
-                const response = await fetch(`${API_URL}?action=${action}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return await response.json();
+                const response = await fetch(`${API_URL}?action=getReports`);
+                const data = await response.json();
+                updateResponse(data);
             } catch (error) {
-                throw error;
+                updateResponse(`Error: ${error.message}`);
             }
         }
 
-        // Helper function for POST requests
-        async function performPostRequest(payload) {
+        async function testGetStats() {
+            try {
+                const response = await fetch(`${API_URL}?action=getStats`);
+                const data = await response.json();
+                updateResponse(data);
+            } catch (error) {
+                updateResponse(`Error: ${error.message}`);
+            }
+        }
+
+        async function testGetReports() {
+            try {
+                const response = await fetch(`${API_URL}?action=getReports`);
+                const data = await response.json();
+                updateResponse(data);
+            } catch (error) {
+                updateResponse(`Error: ${error.message}`);
+            }
+        }
+
+        // POST Tests
+        async function testPostNotes1() {
+            const payload = {
+                partId: '9_rsdp5',
+                columnName: 'Complete Notes',
+                newValue: 'Testing update from Test 4'
+            };
+            await postData(payload);
+        }
+
+        async function testPostNotes2() {
+            const payload = {
+                partId: '19_rmdp1',
+                columnName: 'Complete Notes',
+                newValue: 'Testing update from Test 5'
+            };
+            await postData(payload);
+        }
+
+        async function postData(payload) {
             try {
                 const response = await fetch(API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
                 });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return await response.json();
+                const data = await response.json();
+                updateResponse(data);
             } catch (error) {
-                throw error;
+                updateResponse(`Error: ${error.message}`);
             }
         }
-
-        // GET Actions
-        document.getElementById('getAllData').addEventListener('click', async () => {
-            responseOutput.textContent = "Fetching all data...";
-            try {
-                const result = await performGetRequest("getReports");
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        document.getElementById('getReports').addEventListener('click', async () => {
-            responseOutput.textContent = "Fetching maintenance reports...";
-            try {
-                const result = await performGetRequest("getReports");
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        document.getElementById('getStats').addEventListener('click', async () => {
-            responseOutput.textContent = "Fetching maintenance stats...";
-            try {
-                const result = await performGetRequest("getStats");
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        // POST Actions
-        document.getElementById('updateNotesTest').addEventListener('click', async () => {
-            responseOutput.textContent = "Updating notes for Part ID: 9_rsdp5...";
-            const payload = {
-                action: "updateNotes",
-                partId: "9_rsdp5",
-                columnName: "Notes",
-                newValue: "Test Note Update",
-            };
-            try {
-                const result = await performPostRequest(payload);
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        document.getElementById('updateStatusTest').addEventListener('click', async () => {
-            responseOutput.textContent = "Updating status for Part ID: 9_rsdp5...";
-            const payload = {
-                action: "updateStatus",
-                partId: "9_rsdp5",
-                columnName: "Status",
-                newValue: "Needs Approval",
-            };
-            try {
-                const result = await performPostRequest(payload);
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
     </script>
 </body>
 </html>
