@@ -48,7 +48,7 @@
 </head>
 <body>
     <div class="container">
-        <h2>Complete Notes Test - v1.0</h2>
+        <h2>Complete Notes Test - v1.2</h2>
         
         <div>
             <label>Select Part ID:</label>
@@ -83,6 +83,7 @@
 
             try {
                 console.log('Sending data:', data);
+                
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -92,7 +93,7 @@
                 });
 
                 const result = await response.json();
-                status.textContent = 'Update sent! Check sheet.';
+                status.textContent = result.message;
                 console.log('Response:', result);
             } catch (error) {
                 status.textContent = 'Error: ' + error.message;
