@@ -1,35 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Upload Test</title>
+    <title>Photo Test</title>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        .status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
-        img.preview { max-width: 300px; display: none; margin: 10px 0; }
+        .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .preview { max-width: 300px; display: none; margin: 10px 0; }
         .loading { display: none; color: #666; }
-        #uploaded-links { margin-top: 20px; }
-        .link-item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .media-button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
-    <h2>Upload Test</h2>
-    <div id="status" class="status">Ready</div>
+    <div id="status">Ready</div>
     <div id="loading" class="loading">Processing...</div>
-    <button onclick="document.getElementById('photoInput').click()">Take Photo</button>
-    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none">
-    <img id="photoPreview" class="preview">
-    
-    <div id="uploaded-links">
-        <h3>Last 5 Photos from Sheet:</h3>
-        <div id="link-list"></div>
-        <button onclick="refreshLinks()">Refresh Links</button>
-    </div>
+
+    <!-- Exactly like maintenance app -->
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
+    <button type="button" class="media-button" id="photoButton">Take Photo</button>
+    <img id="photoPreview" class="preview" alt="Photo preview">
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
         let photoData = null;
+        let uploadProgress = 0;
+        const MAX_RETRIES = 3;
+        let isUploading = false;
 
-        // Compression function - exact same as maintenance app
+        // Exact same compression function from maintenance app
         async function compressImage(base64String) {
             return new Promise((resolve) => {
                 const img = new Image();
@@ -58,35 +62,12 @@
             });
         }
 
-        // Get links from sheet
-        async function refreshLinks() {
-            try {
-                const response = await fetch(`${API_URL}?action=getAllData`);
-                const result = await response.json();
-                
-                if (result.status === "success" && Array.isArray(result.data)) {
-                    const links = result.data
-                        .filter(item => item["Photo Link"]) // Get items with photo links
-                        .slice(0, 5) // Get last 5
-                        .map(item => {
-                            return `
-                                <div class="link-item">
-                                    Time: ${new Date(item.Timestamp).toLocaleString()}<br>
-                                    Photo Link: <a href="${item["Photo Link"]}" target="_blank">View Photo</a>
-                                </div>
-                            `;
-                        })
-                        .join('');
-                    
-                    document.getElementById('link-list').innerHTML = links || 'No photo links found';
-                }
-            } catch (error) {
-                console.error('Error fetching links:', error);
-                document.getElementById('link-list').innerHTML = 'Error loading links';
-            }
-        }
+        // Exact same photo button handler from maintenance app
+        document.getElementById('photoButton').addEventListener('click', function() {
+            document.getElementById('photoInput').click();
+        });
 
-        // Handle photo input - exact same as maintenance app
+        // Exact same photo input handler from maintenance app
         document.getElementById('photoInput').addEventListener('change', function(e) {
             if (e.target.files && e.target.files[0]) {
                 const reader = new FileReader();
@@ -94,43 +75,42 @@
                     photoData = e.target.result;
                     document.getElementById('photoPreview').src = photoData;
                     document.getElementById('photoPreview').style.display = 'block';
-                    uploadPhoto();
+                    uploadPhoto();  // Auto upload when photo is taken
                 };
                 reader.readAsDataURL(e.target.files[0]);
             }
         });
 
-        // Upload function - exact same chunking as maintenance app
+        // Upload function using exact same chunking as maintenance app
         async function uploadPhoto() {
             if (!photoData) return;
             
             const loading = document.getElementById('loading');
             const status = document.getElementById('status');
             loading.style.display = 'block';
-            
+            isUploading = true;
+
             try {
-                // Compress image
                 const compressedPhoto = await compressImage(photoData);
                 
-                // Prepare the data exactly like maintenance app
+                // Prepare data
                 const formData = {
                     location: "TEST",
                     name: "TEST",
-                    partId: "TEST_" + Date.now(),
-                    partName: "TEST PART",
+                    partId: "19_rmdp1",  // Using existing part ID from sheet
                     photo: compressedPhoto.split(',')[1]
                 };
 
-                // Split into chunks - exact same as maintenance app
-                const serializedData = JSON.stringify(formData);
-                const chunkSize = 30000;
                 const chunks = [];
+                const chunkSize = 30000;
 
+                // Split data into chunks exactly like maintenance app
+                const serializedData = JSON.stringify(formData);
                 for (let i = 0; i < serializedData.length; i += chunkSize) {
                     chunks.push(serializedData.slice(i, i + chunkSize));
                 }
 
-                // Send chunks
+                // Send chunks with retry logic exactly like maintenance app
                 for (let i = 0; i < chunks.length; i++) {
                     const chunkData = {
                         chunk: chunks[i],
@@ -139,30 +119,50 @@
                         isLast: i === chunks.length - 1
                     };
 
-                    loading.textContent = `Uploading chunk ${i + 1}/${chunks.length}`;
+                    let retryCount = 0;
+                    while (retryCount < MAX_RETRIES) {
+                        try {
+                            const response = await fetch(API_URL, {
+                                method: 'POST',
+                                mode: 'no-cors',
+                                headers: {
+                                    'Content-Type': 'text/plain',
+                                },
+                                body: JSON.stringify(chunkData)
+                            });
 
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: {
-                            'Content-Type': 'text/plain',
-                        },
-                        body: JSON.stringify(chunkData)
-                    });
+                            uploadProgress = Math.round(((i + 1) / chunks.length) * 100);
+                            loading.textContent = `Uploading... ${uploadProgress}%`;
+                            break;
+                        } catch (error) {
+                            retryCount++;
+                            if (retryCount === MAX_RETRIES) {
+                                throw new Error(`Failed to upload chunk ${i + 1}/${chunks.length} after ${MAX_RETRIES} attempts`);
+                            }
+                            loading.textContent = `Retry ${retryCount}/${MAX_RETRIES}...`;
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        }
+                    }
                 }
 
-                status.textContent = 'Upload complete! Refreshing links in 2 seconds...';
-                setTimeout(refreshLinks, 2000);
+                status.textContent = 'Upload complete!';
             } catch (error) {
                 status.textContent = 'Error: ' + error.message;
                 console.error('Upload error:', error);
             } finally {
                 loading.style.display = 'none';
+                isUploading = false;
             }
         }
 
-        // Initial load of links
-        refreshLinks();
+        // Leave page warning from maintenance app
+        window.addEventListener('beforeunload', function(e) {
+            if (isUploading) {
+                e.preventDefault();
+                e.returnValue = 'Upload in progress - leaving this page will cancel the upload. Are you sure?';
+                return e.returnValue;
+            }
+        });
     </script>
 </body>
 </html>
