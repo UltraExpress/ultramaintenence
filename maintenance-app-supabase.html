@@ -505,7 +505,6 @@ document.getElementById('maintenanceForm').addEventListener('submit', async func
     loading.style.display = 'block';
     loading.textContent = 'Starting upload... Please don\'t leave page.';
 
-    // Set upload flag
     isUploading = true;
 
     try {
@@ -521,57 +520,51 @@ document.getElementById('maintenanceForm').addEventListener('submit', async func
             }
         }
 
-// Handle photo compression and upload
-let photoUrl = null;
-if (photoData) {
-    const compressedPhoto = await compressImage(photoData);
-    const photoFile = base64ToFile(compressedPhoto, `photo_${Date.now()}.jpg`);
-    const { data: photoUpload, error: photoError } = await supabase.storage
-        .from('media')  // Changed from 'maintenance-photos' to 'media'
-        .upload(`photos/${Date.now()}_photo.jpg`, photoFile);  // Added 'photos/' folder
-    
-    if (photoError) throw photoError;
-    photoUrl = `${supabaseUrl}/storage/v1/object/public/media/photos/${photoUpload.path}`;
-}
+        // Handle photo upload
+        let photo_link = null;
+        if (photoData) {
+            const compressedPhoto = await compressImage(photoData);
+            const photoFile = base64ToFile(compressedPhoto, `${Date.now()}.jpg`);
+            const { data: photoUpload, error: photoError } = await supabase.storage
+                .from('media')
+                .upload(`${Date.now()}.jpg`, photoFile);
+            
+            if (photoError) throw photoError;
+            photo_link = `${supabaseUrl}/storage/v1/object/public/media/${photoUpload.path}`;
+        }
 
+        // Handle video upload
+        let video_link = null;
+        if (videoBlob) {
+            const { data: videoUpload, error: videoError } = await supabase.storage
+                .from('media')
+                .upload(`${Date.now()}.webm`, videoBlob);
+            
+            if (videoError) throw videoError;
+            video_link = `${supabaseUrl}/storage/v1/object/public/media/${videoUpload.path}`;
+        }
 
-
-
-        
-// Handle video upload
-let videoUrl = null;
-if (videoBlob) {
-    const { data: videoUpload, error: videoError } = await supabase.storage
-        .from('media')  // Changed from 'maintenance-videos' to 'media'
-        .upload(`videos/${Date.now()}_video.webm`, videoBlob);  // Added 'videos/' folder
-    
-    if (videoError) throw videoError;
-    videoUrl = `${supabaseUrl}/storage/v1/object/public/media/videos/${videoUpload.path}`;
-}
-
-
-
-
-
-
-
-
-
-        
-        // Insert report data into Supabase
+        // Insert report data into Supabase with exact matching column names
         const { data, error } = await supabase
             .from('maintenance_reports')
             .insert([{
-                technician_name: document.getElementById('name').value,
+                timestamp: new Date().toISOString(),
                 location: document.getElementById('location').value,
+                technician_name: document.getElementById('name').value,
                 part_id: document.getElementById('part').value + generateRandomString(),
                 part_name: document.getElementById('part').options[document.getElementById('part').selectedIndex].text,
                 status: document.getElementById('status').value,
                 notes: document.getElementById('notes').value,
                 latitude: currentPosition.latitude,
                 longitude: currentPosition.longitude,
-                photo_url: photoUrl,
-                video_url: videoUrl
+                photo_link: photo_link,
+                video_link: video_link,
+                ticket_closed: document.getElementById('status').value === 'Complete' ? new Date().toISOString() : null,
+                priority: 'medium',
+                score: '0',
+                complete_notes: null,
+                complete_photo: null,
+                complete_video: null
             }]);
 
         if (error) throw error;
@@ -590,24 +583,23 @@ if (videoBlob) {
             videoBlob = null;
         }, 2000);
 
-} catch (error) {
+    } catch (error) {
         isUploading = false;
         console.error("Submission error details:", error);
         
-        // More descriptive error message based on the type of error
-        let errorMessage = 'Error submitting report. ';
-        
-        if (error.error && error.error.message) {
-            console.log('Storage error:', error.error);
-            errorMessage += error.error.message;
-        } else if (error.message) {
-            console.log('General error:', error);
-            errorMessage += error.message;
+        let errorMessage = 'Error submitting report: ';
+        if (error.code === '42703') {
+            errorMessage += 'Database column mismatch. Contact support.';
+            console.error("Column mismatch details:", error);
+        } else if (error.message.includes('storage')) {
+            errorMessage += 'Media upload failed. Check file size and type.';
+        } else {
+            errorMessage += error.message || 'Unknown error occurred';
         }
         
         loading.textContent = errorMessage;
-        alert(errorMessage); // Added to make sure we see the error
-        setTimeout(() => loading.style.display = 'none', 5000); // Increased timeout to read error
+        alert(errorMessage);
+        setTimeout(() => loading.style.display = 'none', 3000);
     }
 });
     </script>
