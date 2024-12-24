@@ -186,14 +186,18 @@ input, select, textarea {
             font-weight: bold;
             text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
+
         .preview {
-            width: 100%;
-            max-width: 300px;
-            display: none;
-            margin: 10px auto;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        }
+    width: 100%;
+    max-width: 300px;
+    display: none;
+    margin: 10px auto;
+    border-radius: 15px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    object-fit: contain;
+    -webkit-user-select: none;
+    user-select: none;
+}
         .timer {
             text-align: center;
             font-size: 24px;
@@ -292,7 +296,8 @@ input, select, textarea {
                 <input type="file" id="videoInput" accept="video/*" capture="environment" style="display: none;">
                 <button type="button" class="media-button" id="videoButton">Record Video</button>
                 <div class="timer" id="videoTimer">00:30</div>
-                <video id="videoPreview" class="preview" controls></video>
+            
+                <video id="videoPreview" class="preview" controls playsinline webkit-playsinline></video>
             </div>
 
             <div class="loading">Processing...</div>
@@ -614,10 +619,24 @@ function base64ToFile(base64String, filename) {
 document.getElementById('maintenanceForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    // Pause and reset video preview before submission
+    const videoPreview = document.getElementById('videoPreview');
+    if (videoPreview) {
+        videoPreview.pause();
+        videoPreview.currentTime = 0;
+        videoPreview.style.display = 'none';
+    }
+
     if (!currentPosition) {
         alert('Waiting for location data. Please try again.');
         return;
     }
+
+
+
+
+
+    
 
     const loading = document.querySelector('.loading');
     loading.style.display = 'block';
