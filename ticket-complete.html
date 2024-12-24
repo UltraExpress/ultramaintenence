@@ -1,72 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Column P Test</title>
+    <title>Simple Test</title>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
-        .status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
-        button { padding: 5px 10px; }
+        button, select, input { display: block; width: 100%; padding: 10px; margin: 10px 0; }
+        #preview { max-width: 100%; display: none; margin: 10px 0; }
     </style>
 </head>
 <body>
-    <h2>Column P Write Test</h2>
-    <div id="status" class="status">Ready</div>
-    <div id="items"></div>
+    <!-- Function 1: Load Parts -->
+    <select id="partSelect">
+        <option value="">Select Part</option>
+    </select>
+
+    <!-- Function 2: Take Image -->
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none">
+    <button onclick="document.getElementById('photoInput').click()">Take Photo</button>
+    <img id="preview">
+
+    <!-- Function 3: Write Notes -->
+    <input type="text" id="notes" placeholder="Enter completion notes">
+    <div id="status"></div>
+
+    <!-- Function 4: Submit -->
+    <button onclick="submitForm()">Update Status & Submit</button>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7blJPKrmYhxCczyop4J6ObxDptjfzfYTiJTRrN-3q4WRIiQbPhoBOj4-MTl6UherQiA/exec';
+        let photoData = null;
+        let partsData = null;
 
-        async function writeToColumnP(partId) {
-            document.getElementById('status').textContent = 'Writing to column P...';
-            try {
-                await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Photo&newValue=TEST_URL_${new Date().getTime()}`,
-                    { mode: 'no-cors' }
-                );
-                document.getElementById('status').textContent = 'Write successful!';
-                setTimeout(fetchItems, 1000);
-            } catch (error) {
-                document.getElementById('status').textContent = 'Write Error: ' + error.message;
+        // Function 1: Load Parts
+        async function loadParts() {
+            const response = await fetch(SCRIPT_URL + '?action=getAllData');
+            const data = await response.json();
+            if (data.status === "success") {
+                partsData = data.data;
+                const select = document.getElementById('partSelect');
+                select.innerHTML = '<option value="">Select Part</option>' + 
+                    data.data.map(item => `<option value="${item.partId}">${item.partName}</option>`).join('');
             }
         }
 
-        async function fetchItems() {
-            document.getElementById('status').textContent = 'Loading...';
+        // Function 2: Take Image
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoData = e.target.result;
+                    document.getElementById('preview').src = photoData;
+                    document.getElementById('preview').style.display = 'block';
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // Function 4: Submit (includes status change)
+        async function submitForm() {
+            const partId = document.getElementById('partSelect').value;
+            const notes = document.getElementById('notes').value;
+            
+            if (!partId || !photoData || !notes) {
+                alert('Please fill all fields and take photo');
+                return;
+            }
+
+            const status = document.getElementById('status');
+            status.textContent = 'Uploading...';
+
             try {
-                const response = await fetch(`${API_URL}?action=getAllData`);
-                const result = await response.json();
-                
-                if (result.status === "success" && Array.isArray(result.data)) {
-                    const items = result.data.slice(0, 3);
-                    const itemsHtml = items.map(item => {
-                        const partName = item["Part Name"] || '';
-                        const partId = item["Part ID"] || '';
-                        const completePhoto = item["Complete Photo"] || 'None';
-                        
-                        return `
-                            <div class="item">
-                                <strong>${partName}</strong><br>
-                                ID: ${partId}<br>
-                                Current Complete Photo value: ${completePhoto}<br>
-                                <button onclick="writeToColumnP('${partId}')">
-                                    Write Test Value to Column P
-                                </button>
-                            </div>
-                        `;
-                    }).join('');
-                    
-                    document.getElementById('items').innerHTML = itemsHtml;
-                    document.getElementById('status').textContent = 'Ready';
+                const originalPart = partsData.find(p => p.partId === partId);
+                const data = {
+                    ...originalPart,
+                    photo: photoData.split(',')[1],
+                    status: 'pending complete',
+                    notes: notes,
+                    timestamp: new Date().toISOString()
+                };
+
+                const serializedData = JSON.stringify(data);
+                const chunks = [];
+                for (let i = 0; i < serializedData.length; i += 30000) {
+                    chunks.push(serializedData.slice(i, i + 30000));
                 }
+
+                for (let i = 0; i < chunks.length; i++) {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {'Content-Type': 'text/plain'},
+                        body: JSON.stringify({
+                            chunk: chunks[i],
+                            index: i,
+                            total: chunks.length,
+                            isLast: i === chunks.length - 1
+                        })
+                    });
+                    status.textContent = `Uploading... ${Math.round(((i + 1) / chunks.length) * 100)}%`;
+                }
+
+                status.textContent = 'Complete!';
+                document.getElementById('preview').style.display = 'none';
+                document.getElementById('notes').value = '';
+                photoData = null;
+                loadParts();
+
             } catch (error) {
-                document.getElementById('status').textContent = 'Load Error: ' + error.message;
-                console.error('Error:', error);
+                status.textContent = 'Error: ' + error;
             }
         }
 
-        // Initial load
-        fetchItems();
+        // Load parts on startup
+        loadParts();
     </script>
 </body>
 </html>
