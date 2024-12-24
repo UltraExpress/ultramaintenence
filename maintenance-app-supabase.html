@@ -198,13 +198,7 @@ input, select, textarea {
     -webkit-user-select: none;
     user-select: none;
 }
-        .timer {
-            text-align: center;
-            font-size: 24px;
-            color: #4facfe;
-            margin: 10px 0;
-            display: none;
-        }
+
         .loading {
             display: none;
             text-align: center;
@@ -295,7 +289,7 @@ input, select, textarea {
                 <label>Video (30s max):</label>
                 <input type="file" id="videoInput" accept="video/*" capture="environment" style="display: none;">
                 <button type="button" class="media-button" id="videoButton">Record Video</button>
-                <div class="timer" id="videoTimer">00:30</div>
+            
             
                 <video id="videoPreview" class="preview" controls playsinline webkit-playsinline></video>
             </div>
@@ -462,28 +456,15 @@ function updatePriorityStyle(select) {
             document.getElementById('videoInput').click();
         });
 
-        document.getElementById('videoInput').addEventListener('change', function(e) {
-            if (e.target.files && e.target.files[0]) {
-                const file = e.target.files[0];
-                videoBlob = file;
-                const videoUrl = URL.createObjectURL(file);
-                document.getElementById('videoPreview').src = videoUrl;
-                document.getElementById('videoPreview').style.display = 'block';
-                
-                // Start timer for video preview
-                let timeLeft = 30;
-                document.getElementById('videoTimer').style.display = 'block';
-                const timerInterval = setInterval(() => {
-                    timeLeft--;
-                    document.getElementById('videoTimer').textContent = 
-                        `00:${timeLeft.toString().padStart(2, '0')}`;
-                    if (timeLeft <= 0) {
-                        clearInterval(timerInterval);
-                        document.getElementById('videoTimer').style.display = 'none';
-                    }
-                }, 1000);
-            }
-        });
+document.getElementById('videoInput').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        videoBlob = file;
+        const videoUrl = URL.createObjectURL(file);
+        document.getElementById('videoPreview').src = videoUrl;
+        document.getElementById('videoPreview').style.display = 'block';
+    }
+});
 
         // Add page leave warning
         window.addEventListener('beforeunload', function(e) {
