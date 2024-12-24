@@ -1,56 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Minimal Sheet Test</title>
+    <title>Sheet Test</title>
 </head>
 <body>
-    <h1>Sheet Communication Test</h1>
     <div id="status">Loading...</div>
-    <div id="data"></div>
+    <pre id="data"></pre>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
         
-        // Test reading data
-        async function testRead() {
+        async function test() {
+            document.getElementById('status').textContent = 'Fetching data...';
             try {
-                const response = await fetch(`${API_URL}?action=getReports`);
-                const result = await response.json();
-                
-                if (result.status === "success" && Array.isArray(result.data)) {
-                    // Just show first 3 items
-                    const items = result.data.slice(0, 3);
-                    document.getElementById('data').innerHTML = items.map(item => `
-                        <div style="margin: 10px 0; padding: 10px; border: 1px solid #ccc;">
-                            Part ID: ${item.partId}<br>
-                            Name: ${item.partName}<br>
-                            <button onclick="testWrite('${item.partId}')">Write Test Note</button>
-                        </div>
-                    `).join('');
-                    document.getElementById('status').textContent = 'Read successful';
-                }
+                const response = await fetch(`${API_URL}?action=getAllData`);
+                document.getElementById('status').textContent = 'Got response...';
+                const data = await response.json();
+                document.getElementById('status').textContent = 'Success!';
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
             } catch (error) {
-                document.getElementById('status').textContent = 'Read error: ' + error.message;
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+                console.error('Full error:', error);
             }
         }
 
-        // Test writing data
-        async function testWrite(partId) {
-            try {
-                await fetch(
-                    `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Notes&newValue=TEST+NOTE`,
-                    { mode: 'no-cors' }
-                );
-                document.getElementById('status').textContent = 'Write request sent';
-                // Wait 1 second then refresh to show the change
-                setTimeout(testRead, 1000);
-            } catch (error) {
-                document.getElementById('status').textContent = 'Write error: ' + error.message;
-            }
-        }
-
-        // Start the test
-        testRead();
+        test();
     </script>
 </body>
 </html>
