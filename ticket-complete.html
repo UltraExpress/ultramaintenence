@@ -12,14 +12,17 @@
 </head>
 <body>
     <h2>Sheet Communication Test</h2>
-    <div id="status" class="status">Ready</div>
-    <div id="items"></div>
+    <div id="statusMessage" class="status">Ready</div>
+    <div id="itemsList"></div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
         const MAX_CHUNK_SIZE = 30000;
-        
-        // Helper function for base64 conversion
+
+        function generateRandomString() {
+            return '_' + Math.random().toString(36).substring(2, 6);
+        }
+
         async function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -29,54 +32,56 @@
             });
         }
 
-        // Split data into chunks and send
-        async function sendChunkedData(data) {
-            const serializedData = JSON.stringify(data);
-            const chunks = [];
-            
-            for (let i = 0; i < serializedData.length; i += MAX_CHUNK_SIZE) {
-                chunks.push(serializedData.slice(i, i + MAX_CHUNK_SIZE));
-            }
-
-            for (let i = 0; i < chunks.length; i++) {
-                const chunkData = {
-                    chunk: chunks[i],
-                    index: i,
-                    total: chunks.length,
-                    isLast: i === chunks.length - 1
-                };
-
-                await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'text/plain',
-                    },
-                    body: JSON.stringify(chunkData)
-                });
-            }
-        }
-
         async function uploadImage(partId, file) {
-            document.getElementById('status').textContent = 'Processing image...';
+            const status = document.getElementById('statusMessage');
+            status.textContent = 'Processing image...';
+            
             try {
-                // Convert to base64 and compress
                 const base64Data = await blobToBase64(file);
-                
-                // Prepare the data object matching the main app structure
-                const formData = {
-                    partId: partId,
-                    photo: base64Data.split(',')[1],
-                    timestamp: new Date().toISOString()
-                };
+                const formData = new FormData();
+                formData.append('name', 'test_user');
+                formData.append('location', 'test_location');
+                formData.append('partId', partId + generateRandomString());
+                formData.append('photo', base64Data.split(',')[1]);
+                formData.append('timestamp', new Date().toISOString());
 
-                document.getElementById('status').textContent = 'Uploading...';
-                await sendChunkedData(formData);
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    data[key] = value;
+                }
+
+                const serializedData = JSON.stringify(data);
+                const chunks = [];
+
+                for (let i = 0; i < serializedData.length; i += MAX_CHUNK_SIZE) {
+                    chunks.push(serializedData.slice(i, i + MAX_CHUNK_SIZE));
+                }
+
+                status.textContent = 'Uploading...';
                 
-                document.getElementById('status').textContent = 'Image uploaded!';
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunkData = {
+                        chunk: chunks[i],
+                        index: i,
+                        total: chunks.length,
+                        isLast: i === chunks.length - 1
+                    };
+
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'text/plain',
+                        },
+                        body: JSON.stringify(chunkData)
+                    });
+                    status.textContent = `Uploading... ${Math.round(((i + 1) / chunks.length) * 100)}%`;
+                }
+
+                status.textContent = 'Upload complete!';
                 setTimeout(fetchItems, 1000);
             } catch (error) {
-                document.getElementById('status').textContent = 'Upload Error: ' + error.message;
+                status.textContent = 'Upload Error: ' + error.message;
                 console.error('Error:', error);
             }
         }
@@ -84,56 +89,56 @@
         function handleImageSelect(partId, input) {
             const file = input.files[0];
             if (file) {
-                // Show preview
                 const preview = document.getElementById(`preview-${partId}`);
                 preview.src = URL.createObjectURL(file);
                 preview.classList.add('show');
-                
-                // Upload
                 uploadImage(partId, file);
             }
         }
 
         async function testWrite(partId) {
-            document.getElementById('status').textContent = 'Writing test note...';
+            const status = document.getElementById('statusMessage');
+            status.textContent = 'Writing test note...';
             try {
                 await fetch(
                     `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Notes&newValue=TEST+NOTE`,
                     { mode: 'no-cors' }
                 );
-                document.getElementById('status').textContent = 'Write successful!';
+                status.textContent = 'Write successful!';
                 setTimeout(fetchItems, 1000);
             } catch (error) {
-                document.getElementById('status').textContent = 'Write Error: ' + error.message;
+                status.textContent = 'Write Error: ' + error.message;
             }
         }
 
         async function updateStatus(partId, newStatus) {
-            document.getElementById('status').textContent = 'Updating status...';
+            const status = document.getElementById('statusMessage');
+            status.textContent = 'Updating status...';
             try {
                 await fetch(
                     `${API_URL}?action=updateStatus&partId=${partId}&columnName=Status&newValue=${newStatus}`,
                     { mode: 'no-cors' }
                 );
-                document.getElementById('status').textContent = 'Status updated!';
+                status.textContent = 'Status updated!';
                 setTimeout(fetchItems, 1000);
             } catch (error) {
-                document.getElementById('status').textContent = 'Update Error: ' + error.message;
+                status.textContent = 'Update Error: ' + error.message;
             }
         }
 
         async function fetchItems() {
-            document.getElementById('status').textContent = 'Loading...';
+            const status = document.getElementById('statusMessage');
+            status.textContent = 'Loading...';
             try {
                 const response = await fetch(`${API_URL}?action=getAllData`);
                 const result = await response.json();
                 
                 if (result.status === "success" && Array.isArray(result.data)) {
                     const items = result.data.slice(0, 3);
-                    const itemsHtml = items.map(item => {
+                    document.getElementById('itemsList').innerHTML = items.map((item, index) => {
                         const partName = item["Part Name"] || '';
                         const partId = item["Part ID"] || '';
-                        const status = item["Status"] || '';
+                        const currentStatus = item["Status"] || '';
                         const notes = item["Complete Notes"] || 'None';
                         const photo = item["Complete Photo"] || '';
                         
@@ -141,17 +146,20 @@
                             <div class="item">
                                 <strong>${partName}</strong><br>
                                 ID: ${partId}<br>
-                                Status: 
-                                <select onchange="updateStatus('${partId}', this.value)">
-                                    <option value="Needs Work" ${status === 'Needs Work' ? 'selected' : ''}>Needs Work</option>
-                                    <option value="Parts On Order" ${status === 'Parts On Order' ? 'selected' : ''}>Parts On Order</option>
-                                    <option value="In Progress" ${status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                                    <option value="Complete" ${status === 'Complete' ? 'selected' : ''}>Complete</option>
+                                <label for="status-${index}">Status:</label>
+                                <select id="status-${index}" name="status-${index}" 
+                                        onchange="updateStatus('${partId}', this.value)">
+                                    <option value="Needs Work" ${currentStatus === 'Needs Work' ? 'selected' : ''}>Needs Work</option>
+                                    <option value="Parts On Order" ${currentStatus === 'Parts On Order' ? 'selected' : ''}>Parts On Order</option>
+                                    <option value="In Progress" ${currentStatus === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                    <option value="Complete" ${currentStatus === 'Complete' ? 'selected' : ''}>Complete</option>
                                 </select><br>
                                 Complete Notes: ${notes}<br>
-                                <button onclick="testWrite('${partId}')">Add Test Note</button><br>
+                                <button id="note-btn-${index}" onclick="testWrite('${partId}')">Add Test Note</button><br>
                                 <div>
                                     <input type="file" 
+                                           id="file-${index}"
+                                           name="file-${index}"
                                            accept="image/*" 
                                            onchange="handleImageSelect('${partId}', this)"
                                            style="margin: 10px 0;">
@@ -161,12 +169,10 @@
                             </div>
                         `;
                     }).join('');
-                    
-                    document.getElementById('items').innerHTML = itemsHtml;
-                    document.getElementById('status').textContent = 'Data loaded!';
+                    status.textContent = 'Data loaded!';
                 }
             } catch (error) {
-                document.getElementById('status').textContent = 'Load Error: ' + error.message;
+                status.textContent = 'Load Error: ' + error.message;
                 console.error('Error:', error);
             }
         }
