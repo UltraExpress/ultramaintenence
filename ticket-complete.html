@@ -1,166 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sheet Communication Test</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <style>
-        .loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .loading.hidden {
-            display: none;
-        }
-
-        .loading-spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .status-needs-work { 
-            background-color: #FEE2E2;
-            color: #991B1B;
-        }
-        .status-in-progress { 
-            background-color: #FEF3C7;
-            color: #92400E;
-        }
-        .status-complete { 
-            background-color: #D1FAE5;
-            color: #065F46;
-        }
-    </style>
+    <title>Minimal Sheet Test</title>
 </head>
-<body class="bg-gray-100">
-    <div id="loadingOverlay" class="loading hidden">
-        <div class="loading-spinner"></div>
-    </div>
-
-    <div class="min-h-screen p-8">
-        <div class="max-w-4xl mx-auto">
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h1 class="text-2xl font-bold text-blue-600">Sheet Communication Test</h1>
-                <p class="text-gray-600 mt-2">Testing read/write operations with the maintenance sheet</p>
-            </div>
-
-            <div id="statusMessage" class="bg-green-100 text-green-700 p-4 rounded-lg mb-6 hidden"></div>
-
-            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="itemsTableBody" class="bg-white divide-y divide-gray-200">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+<body>
+    <h1>Sheet Communication Test</h1>
+    <div id="status">Loading...</div>
+    <div id="data"></div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
         
-        function toggleLoading(show) {
-            document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
-        }
-
-        function showMessage(message, isError = false) {
-            const messageEl = document.getElementById('statusMessage');
-            messageEl.textContent = message;
-            messageEl.className = `p-4 rounded-lg mb-6 ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
-            setTimeout(() => messageEl.classList.add('hidden'), 3000);
-        }
-
-        function getStatusClass(status) {
-            switch(status?.toLowerCase()) {
-                case 'needs work': return 'status-needs-work';
-                case 'in progress': return 'status-in-progress';
-                case 'complete': return 'status-complete';
-                default: return 'bg-gray-100 text-gray-800';
-            }
-        }
-
-        async function fetchItems() {
-            toggleLoading(true);
+        // Test reading data
+        async function testRead() {
             try {
                 const response = await fetch(`${API_URL}?action=getReports`);
                 const result = await response.json();
                 
                 if (result.status === "success" && Array.isArray(result.data)) {
-                    const items = result.data.slice(0, 5);
-                    document.getElementById('itemsTableBody').innerHTML = items.map(item => `
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">${item.partId || ''}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">${item.partName || ''}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">${item.Location || ''}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 py-1 text-xs rounded-full ${getStatusClass(item.Status)}">
-                                    ${item.Status || 'Unknown'}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <button onclick="updateNote('${item.partId}')" 
-                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-                                    Add Test Note
-                                </button>
-                            </td>
-                        </tr>
+                    // Just show first 3 items
+                    const items = result.data.slice(0, 3);
+                    document.getElementById('data').innerHTML = items.map(item => `
+                        <div style="margin: 10px 0; padding: 10px; border: 1px solid #ccc;">
+                            Part ID: ${item.partId}<br>
+                            Name: ${item.partName}<br>
+                            <button onclick="testWrite('${item.partId}')">Write Test Note</button>
+                        </div>
                     `).join('');
-                    showMessage('Items loaded successfully');
+                    document.getElementById('status').textContent = 'Read successful';
                 }
             } catch (error) {
-                console.error('Error:', error);
-                showMessage('Error loading items: ' + error.message, true);
+                document.getElementById('status').textContent = 'Read error: ' + error.message;
             }
-            toggleLoading(false);
         }
 
-        async function updateNote(partId) {
-            if (!partId) return;
-            
-            toggleLoading(true);
+        // Test writing data
+        async function testWrite(partId) {
             try {
                 await fetch(
                     `${API_URL}?action=updateStatus&partId=${partId}&columnName=Complete+Notes&newValue=TEST+NOTE`,
                     { mode: 'no-cors' }
                 );
-                
-                showMessage('Update sent successfully');
-                setTimeout(fetchItems, 1000);
+                document.getElementById('status').textContent = 'Write request sent';
+                // Wait 1 second then refresh to show the change
+                setTimeout(testRead, 1000);
             } catch (error) {
-                console.error('Error:', error);
-                showMessage('Error updating note: ' + error.message, true);
+                document.getElementById('status').textContent = 'Write error: ' + error.message;
             }
-            toggleLoading(false);
         }
 
-        document.addEventListener('DOMContentLoaded', fetchItems);
+        // Start the test
+        testRead();
     </script>
 </body>
 </html>
