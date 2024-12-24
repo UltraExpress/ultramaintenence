@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Sheets API Multi-Test - Version 1.3</title>
+    <title>Google Sheets API Multi-Test</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f4f4f4;
+            background-color: #f9f9f9;
         }
 
         h1, h2 {
@@ -52,26 +52,21 @@
 </head>
 <body>
     <h1>Google Sheets API Multi-Test</h1>
-    <div class="version">Version: 1.3</div>
+    <div class="version">Version: 2.0</div>
 
-    <p>This page tests multiple POST and GET operations in one place:</p>
+    <p>This page tests multiple GET and POST operations on the backend:</p>
 
     <div class="button-container">
         <h2>GET Tests:</h2>
-        <button id="getAllData">Test 1: Fetch All Data</button>
-        <button id="getSingleRow">Test 2: Fetch Data for Part ID: 9_rsdp5</button>
-        <button id="getFilteredStatus">Test 3: Fetch Items with Status: Needs Work</button>
-        <button id="getFilteredNotes">Test 4: Fetch Items with Notes Containing 'test'</button>
-        <button id="getRecentUpdates">Test 5: Fetch Recently Updated Items</button>
+        <button id="getAllData">Get All Data</button>
+        <button id="getReports">Get Maintenance Reports</button>
+        <button id="getStats">Get Maintenance Stats</button>
     </div>
 
     <div class="button-container">
         <h2>POST Tests:</h2>
-        <button id="updateNoteTest1">Test 6: Update Notes (Test 1)</button>
-        <button id="updateNoteTest2">Test 7: Update Notes (Test 2)</button>
-        <button id="updateNoteTest3">Test 8: Update Notes (Test 3)</button>
-        <button id="updateNoteTest4">Test 9: Update Notes (Test 4)</button>
-        <button id="updateNoteTest5">Test 10: Update Notes (Test 5)</button>
+        <button id="updateNotesTest">Update Notes for Part ID: 9_rsdp5</button>
+        <button id="updateStatusTest">Update Status for Part ID: 9_rsdp5</button>
     </div>
 
     <h2>Response:</h2>
@@ -83,9 +78,9 @@
         const responseOutput = document.getElementById('responseOutput');
 
         // Helper function for GET requests
-        async function performGetRequest(params) {
+        async function performGetRequest(action) {
             try {
-                const response = await fetch(`${API_URL}?${new URLSearchParams(params)}`);
+                const response = await fetch(`${API_URL}?action=${action}`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 return await response.json();
             } catch (error) {
@@ -108,65 +103,45 @@
             }
         }
 
-        // GET Tests
+        // GET Actions
         document.getElementById('getAllData').addEventListener('click', async () => {
             responseOutput.textContent = "Fetching all data...";
             try {
-                const result = await performGetRequest({ action: "getAllData" });
+                const result = await performGetRequest("getReports");
                 responseOutput.textContent = JSON.stringify(result, null, 2);
             } catch (error) {
                 responseOutput.textContent = `Error: ${error.message}`;
             }
         });
 
-        document.getElementById('getSingleRow').addEventListener('click', async () => {
-            responseOutput.textContent = "Fetching data for Part ID: 9_rsdp5...";
+        document.getElementById('getReports').addEventListener('click', async () => {
+            responseOutput.textContent = "Fetching maintenance reports...";
             try {
-                const result = await performGetRequest({ action: "getRowByPartId", partId: "9_rsdp5" });
+                const result = await performGetRequest("getReports");
                 responseOutput.textContent = JSON.stringify(result, null, 2);
             } catch (error) {
                 responseOutput.textContent = `Error: ${error.message}`;
             }
         });
 
-        document.getElementById('getFilteredStatus').addEventListener('click', async () => {
-            responseOutput.textContent = "Fetching items with Status: Needs Work...";
+        document.getElementById('getStats').addEventListener('click', async () => {
+            responseOutput.textContent = "Fetching maintenance stats...";
             try {
-                const result = await performGetRequest({ action: "getFilteredData", filter: "status", value: "Needs Work" });
+                const result = await performGetRequest("getStats");
                 responseOutput.textContent = JSON.stringify(result, null, 2);
             } catch (error) {
                 responseOutput.textContent = `Error: ${error.message}`;
             }
         });
 
-        document.getElementById('getFilteredNotes').addEventListener('click', async () => {
-            responseOutput.textContent = "Fetching items with Notes containing 'test'...";
-            try {
-                const result = await performGetRequest({ action: "getFilteredData", filter: "notes", value: "test" });
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        document.getElementById('getRecentUpdates').addEventListener('click', async () => {
-            responseOutput.textContent = "Fetching recently updated items...";
-            try {
-                const result = await performGetRequest({ action: "getRecentUpdates" });
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        // POST Tests
-        document.getElementById('updateNoteTest1').addEventListener('click', async () => {
-            responseOutput.textContent = "Updating notes (Test 1)...";
+        // POST Actions
+        document.getElementById('updateNotesTest').addEventListener('click', async () => {
+            responseOutput.textContent = "Updating notes for Part ID: 9_rsdp5...";
             const payload = {
-                action: "updateStatus",
+                action: "updateNotes",
                 partId: "9_rsdp5",
-                columnName: "Complete Notes",
-                newValue: "Test notes update 1",
+                columnName: "Notes",
+                newValue: "Test Note Update",
             };
             try {
                 const result = await performPostRequest(payload);
@@ -176,61 +151,13 @@
             }
         });
 
-        document.getElementById('updateNoteTest2').addEventListener('click', async () => {
-            responseOutput.textContent = "Updating notes (Test 2)...";
+        document.getElementById('updateStatusTest').addEventListener('click', async () => {
+            responseOutput.textContent = "Updating status for Part ID: 9_rsdp5...";
             const payload = {
                 action: "updateStatus",
                 partId: "9_rsdp5",
-                columnName: "Complete Notes",
-                newValue: "Test notes update 2",
-            };
-            try {
-                const result = await performPostRequest(payload);
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        document.getElementById('updateNoteTest3').addEventListener('click', async () => {
-            responseOutput.textContent = "Updating notes (Test 3)...";
-            const payload = {
-                action: "updateStatus",
-                partId: "9_rsdp5",
-                columnName: "Complete Notes",
-                newValue: "Test notes update 3",
-            };
-            try {
-                const result = await performPostRequest(payload);
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        document.getElementById('updateNoteTest4').addEventListener('click', async () => {
-            responseOutput.textContent = "Updating notes (Test 4)...";
-            const payload = {
-                action: "updateStatus",
-                partId: "9_rsdp5",
-                columnName: "Complete Notes",
-                newValue: "Test notes update 4",
-            };
-            try {
-                const result = await performPostRequest(payload);
-                responseOutput.textContent = JSON.stringify(result, null, 2);
-            } catch (error) {
-                responseOutput.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        document.getElementById('updateNoteTest5').addEventListener('click', async () => {
-            responseOutput.textContent = "Updating notes (Test 5)...";
-            const payload = {
-                action: "updateStatus",
-                partId: "9_rsdp5",
-                columnName: "Complete Notes",
-                newValue: "Test notes update 5",
+                columnName: "Status",
+                newValue: "Needs Approval",
             };
             try {
                 const result = await performPostRequest(payload);
@@ -242,4 +169,3 @@
     </script>
 </body>
 </html>
-
