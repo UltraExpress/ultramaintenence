@@ -1,1 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ULTRA WASH MAINTENANCE APP</title>
+    <!-- Add Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Keeping your exact same styles */
+        body {
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #13111C;
+            color: #fff;
+        }
+        .container {
+            background: linear-gradient(145deg, #1a1825, #252331);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+        }
+        h1 {
+            text-align: center;
+            background: linear-gradient(90deg, #00f2fe, #4facfe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4facfe;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234facfe' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 15px rgba(79, 172, 254, 0.3);
+        }
+        .media-button {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            margin: 10px 0;
+            display: block;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .media-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        .submit-button {
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 18px;
+            margin-top: 20px;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .preview {
+            width: 100%;
+            max-width: 300px;
+            display: none;
+            margin: 10px auto;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .timer {
+            text-align: center;
+            font-size: 24px;
+            color: #4facfe;
+            margin: 10px 0;
+            display: none;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(79, 172, 254, 0.1);
+            border-radius: 12px;
+            font-weight: bold;
+            color: #4facfe;
+        }
+        .status-needs-work { background-color: #ff4444 !important; }
+        .status-in-progress { background-color: #ffbb33 !important; }
+        .status-complete { background-color: #00C851 !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ULTRA WASH MAINTENANCE APP</h1>
+        
+        <form id="maintenanceForm">
+            <div class="form-group">
+                <label for="name">Your Name:</label>
+                <input type="text" id="name" required>
+            </div>
 
+            <div class="form-group">
+                <label for="location">Location:</label>
+                <select id="location" required>
+                    <option value="">Select Location</option>
+                    <option value="RIVERSIDE">RIVERSIDE</option>
+                    <option value="SANTA ANA">SANTA ANA</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="part">Part/Area to Maintain:</label>
+                <select id="part" required disabled>
+                    <option value="">Select Location First</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="status">Work Status:</label>
+                <select id="status" required onchange="updateStatusStyle(this)">
+                    <option value="">Select Status</option>
+                    <option value="Needs Work">Needs Work</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Complete">Complete</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Maintenance Notes:</label>
+                <textarea id="notes" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Photo:</label>
+                <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
+                <button type="button" class="media-button" id="photoButton">Take Photo</button>
+                <img id="photoPreview" class="preview" alt="Photo preview">
+            </div>
+
+            <div class="form-group">
+                <label>Video (30s max):</label>
+                <input type="file" id="videoInput" accept="video/*" capture="environment" style="display: none;">
+                <button type="button" class="media-button" id="videoButton">Record Video</button>
+                <div class="timer" id="videoTimer">00:30</div>
+                <video id="videoPreview" class="preview" controls></video>
+            </div>
+
+            <div class="loading">Processing...</div>
+            <button type="submit" class="submit-button">Submit Report</button>
+        </form>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://glmnunnmbybqevgpjwlg.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsbW51bm5tYnlicWV2Z3Bqd2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwNjQwOTMsImV4cCI6MjA1MDY0MDA5M30.6XnMRH86CpQCoImyQ_aRFMZIPYbZkOk0onW0CL9wqXs';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Initialize variables
+        let currentPosition = null;
+        let photoData = null;
+        let videoBlob = null;
+        let isUploading = false;
+
+        // Parts loading configuration (keeping JSON approach)
+        const CHECKLIST_URLS = {
+            'RIVERSIDE': '/riverside-checklist.json',
+            'SANTA ANA': '/speedie-checklist.json'
+        };
+
+        // Initialize geolocation
+        navigator.geolocation.getCurrentPosition(pos => {
+            currentPosition = {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude
+            };
+        }, err => {
+            console.error("Location error:", err);
+            alert("Please enable location services to use this app");
+        });
+
+        function generateRandomString() {
+            return '_r' + Math.random().toString(36).substring(2, 6);
+        }
+
+        // Update status select styling
+        function updateStatusStyle(select) {
+            select.className = '';
+            if (select.value === 'Needs Work') {
+                select.classList.add('status-needs-work');
+            } else if (select.value === 'In Progress') {
+                select.classList.add('status-in-progress');
+            } else if (select.value === 'Complete') {
+                select.classList.add('status-complete');
+            }
+        }
+
+        // Function to populate parts dropdown (keeping JSON approach)
+        function populatePartsDropdown(data) {
+            const partSelect = document.getElementById('part');
+            partSelect.innerHTML = '<option value="">Select Part/Area to Maintain</option>';
+            
+            data.items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                partSelect.appendChild(option);
+            });
+        }
+
+        // Function to load parts data (keeping JSON approach)
+        async function loadPartsData(location) {
+            const url = CHECKLIST_URLS[location];
+            if (!url) {
+                console.error('Invalid location selected');
+                return;
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                populatePartsDropdown(data);
+                document.getElementById('part').disabled = false;
+            } catch (error) {
+                console.error('Error loading parts data:', error);
+                alert('Error loading parts list. Please check your internet connection and try again.');
+                const partSelect = document.getElementById('part');
+                partSelect.innerHTML = '<option value="">Error loading parts</option>';
+            }
+        }
+
+        // Location change handler
+        document.getElementById('location').addEventListener('change', function(e) {
+            const selectedLocation = this.value;
+            if (selectedLocation) {
+                const partSelect = document.getElementById('part');
+                partSelect.innerHTML = '<option value="">Loading parts...</option>';
+                partSelect.disabled = true;
+                
+                loadPartsData(selectedLocation);
+            }
+        });
+
+        // Helper function for converting blob to base64
+        async function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // Photo handling
+        document.getElementById('photoButton').addEventListener('click', function() {
+            document.getElementById('photoInput').click();
+        });
+
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoData = e.target.result;
+                    document.getElementById('photoPreview').src = photoData;
+                    document.getElementById('photoPreview').style.display = 'block';
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // Video handling
+        document.getElementById('videoButton').addEventListener('click', function() {
+            document.getElementById('videoInput').click();
+        });
+
+        document.getElementById('videoInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                videoBlob = file;
+                const videoUrl = URL.createObjectURL(file);
+                document.getElementById('videoPreview').src = videoUrl;
+                document.getElementById('videoPreview').style.display = 'block';
+                
+                // Start timer for video preview
+                let timeLeft = 30;
+                document.getElementById('videoTimer').style.display = 'block';
+                const timerInterval = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('videoTimer').textContent = 
+                        `00:${timeLeft.toString().padStart(2, '0')}`;
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        document.getElementById('videoTimer').style.display = 'none';
+                    }
+                }, 1000);
+            }
+        });
+
+        // Add page leave warning
+        window.addEventListener('beforeunload', function(e) {
+            if (isUploading) {
+                e.preventDefault();
+                e.returnValue = 'Upload in progress - leaving this page will cancel the upload. Are you sure?';
+                return e.returnValue;
+            }
+        });
+
+        // Video duration check
+async function checkVideoDuration(videoBlob) {
+    return new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        
+        video.onloadedmetadata = function() {
+            window.URL.revokeObjectURL(video.src);
+            resolve(video.duration);
+        };
+        
+        video.src = URL.createObjectURL(videoBlob);
+    });
+}
+
+// Video compression
+async function compressVideo(videoBlob) {
+    // Return original if WebCodecs not supported
+    if (!('VideoEncoder' in window)) {
+        console.warn('VideoEncoder not supported - using original video');
+        return videoBlob;
+    }
+
+    try {
+        // Create video element
+        const videoElement = document.createElement('video');
+        videoElement.src = URL.createObjectURL(videoBlob);
+        await videoElement.play();
+        videoElement.pause();
+
+        // Canvas setup
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = Math.min(640, videoElement.videoWidth);
+        canvas.height = (canvas.width / videoElement.videoWidth) * videoElement.videoHeight;
+
+        // Setup MediaRecorder
+        const stream = canvas.captureStream();
+        const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm',
+            videoBitsPerSecond: 1000000  // 1 Mbps
+        });
+
+        // Store compressed chunks
+        const chunks = [];
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+
+        // Start recording
+        mediaRecorder.start();
+
+        // Process frames
+        const fps = 30;
+        const totalFrames = videoElement.duration * fps;
+        const frameInterval = 1000 / fps;
+
+        for (let i = 0; i < totalFrames; i++) {
+            videoElement.currentTime = i * (1 / fps);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        }
+
+        // Stop and get result
+        mediaRecorder.stop();
+        await new Promise(resolve => {
+            mediaRecorder.onstop = () => {
+                const compressedBlob = new Blob(chunks, { type: 'video/webm' });
+                resolve(compressedBlob);
+            };
+        });
+
+        return chunks[0];
+    } catch (error) {
+        console.warn('Video compression failed:', error);
+        return videoBlob;
+    }
+}
+
+// Image compression
+async function compressImage(base64String) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = base64String;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate new dimensions (max 800px width/height)
+            let width = img.width;
+            let height = img.height;
+            const maxSize = 800;
+            
+            if (width > height && width > maxSize) {
+                height = (height * maxSize) / width;
+                width = maxSize;
+            } else if (height > maxSize) {
+                width = (width * maxSize) / height;
+                height = maxSize;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+    });
+}
+
+// Helper function to convert base64 to File
+function base64ToFile(base64String, filename) {
+    const arr = base64String.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+}
+
+// Form submission handler
+document.getElementById('maintenanceForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!currentPosition) {
+        alert('Waiting for location data. Please try again.');
+        return;
+    }
+
+    const loading = document.querySelector('.loading');
+    loading.style.display = 'block';
+    loading.textContent = 'Starting upload... Please don\'t leave page.';
+
+    // Set upload flag
+    isUploading = true;
+
+    try {
+        // Check video duration if video exists
+        if (videoBlob) {
+            videoBlob = await compressVideo(videoBlob);
+            const duration = await checkVideoDuration(videoBlob);
+            if (duration > 30) {
+                alert('Video must be 30 seconds or less. Please record a shorter video.');
+                loading.style.display = 'none';
+                isUploading = false;
+                return;
+            }
+        }
+
+        // Handle photo compression and upload
+        let photoUrl = null;
+        if (photoData) {
+            const compressedPhoto = await compressImage(photoData);
+            const photoFile = base64ToFile(compressedPhoto, `photo_${Date.now()}.jpg`);
+            const { data: photoUpload, error: photoError } = await supabase.storage
+                .from('maintenance-photos')
+                .upload(`${Date.now()}_photo.jpg`, photoFile);
+            
+            if (photoError) throw photoError;
+            photoUrl = `${supabaseUrl}/storage/v1/object/public/maintenance-photos/${photoUpload.path}`;
+        }
+
+        // Handle video upload
+        let videoUrl = null;
+        if (videoBlob) {
+            const { data: videoUpload, error: videoError } = await supabase.storage
+                .from('maintenance-videos')
+                .upload(`${Date.now()}_video.webm`, videoBlob);
+            
+            if (videoError) throw videoError;
+            videoUrl = `${supabaseUrl}/storage/v1/object/public/maintenance-videos/${videoUpload.path}`;
+        }
+
+        // Insert report data into Supabase
+        const { data, error } = await supabase
+            .from('maintenance_reports')
+            .insert([{
+                technician_name: document.getElementById('name').value,
+                location: document.getElementById('location').value,
+                part_id: document.getElementById('part').value + generateRandomString(),
+                part_name: document.getElementById('part').options[document.getElementById('part').selectedIndex].text,
+                status: document.getElementById('status').value,
+                notes: document.getElementById('notes').value,
+                latitude: currentPosition.latitude,
+                longitude: currentPosition.longitude,
+                photo_url: photoUrl,
+                video_url: videoUrl
+            }]);
+
+        if (error) throw error;
+
+        // Success handling
+        isUploading = false;
+        loading.textContent = 'Report submitted successfully!';
+        setTimeout(() => {
+            loading.style.display = 'none';
+            e.target.reset();
+            document.getElementById('photoPreview').style.display = 'none';
+            document.getElementById('videoPreview').style.display = 'none';
+            document.getElementById('status').className = '';
+            document.getElementById('part').disabled = true;
+            photoData = null;
+            videoBlob = null;
+        }, 2000);
+
+    } catch (error) {
+        isUploading = false;
+        console.error("Submission error:", error);
+        loading.textContent = 'Error submitting report. Please try again.';
+        setTimeout(() => loading.style.display = 'none', 3000);
+    }
+});
+    </script>
+</body>
+</html>
