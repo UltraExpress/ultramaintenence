@@ -3,344 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ticket Complete App</title>
+    <title>Test Script for Google Sheets</title>
     <style>
         body {
-            font-family: 'Segoe UI', 'Roboto', sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #13111C;
-            color: #fff;
-        }
-
-        .container {
-            background: linear-gradient(145deg, #1a1825, #252331);
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(4px);
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
         }
 
         h1 {
-            text-align: center;
-            background: linear-gradient(90deg, #00f2fe, #4facfe);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            font-size: 24px;
-            margin-bottom: 30px;
+            color: #333;
         }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #4facfe;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            box-sizing: border-box;
-            background: rgba(255, 255, 255, 0.05);
-            color: #fff;
-            transition: all 0.3s ease;
-        }
-
-        textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #4facfe;
-            box-shadow: 0 0 15px rgba(79, 172, 254, 0.3);
-        }
-
-        .media-button {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            padding: 15px;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 16px;
+        button {
+            padding: 10px 20px;
             margin: 10px 0;
-            display: block;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            font-weight: bold;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        .media-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
-
-        .submit-button {
-            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            font-size: 16px;
+            background-color: #007bff;
             color: white;
-            padding: 15px 30px;
             border: none;
-            border-radius: 12px;
+            border-radius: 5px;
             cursor: pointer;
-            width: 100%;
-            font-size: 18px;
-            margin-top: 20px;
-            text-transform: uppercase;
-            font-weight: bold;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        .preview {
-            width: 100%;
-            max-width: 300px;
-            display: none;
-            margin: 10px auto;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        button:hover {
+            background-color: #0056b3;
         }
 
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 15px 0;
+        pre {
+            background-color: #333;
+            color: #f4f4f4;
             padding: 15px;
-            background: rgba(79, 172, 254, 0.1);
-            border-radius: 12px;
-            font-weight: bold;
-            color: #4facfe;
-        }
-
-        .disabled-option {
-            color: grey;
+            border-radius: 5px;
+            overflow-x: auto;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Ticket Complete App</h1>
+    <h1>Google Sheets API Test</h1>
+    <p>This page tests the following:</p>
+    <ul>
+        <li>Fetching all data from the master script.</li>
+        <li>Posting data to update "Status" (Column F) for <strong>Part ID: 9_rsdp5</strong>.</li>
+    </ul>
 
-        <!-- Dropdown to select item -->
-        <div class="form-group">
-            <label for="itemSelect">Select Maintenance Item:</label>
-            <select id="itemSelect" required>
-                <option value="">Loading items...</option>
-            </select>
-        </div>
+    <button id="fetchDataButton">Get All Data</button>
+    <button id="postDataButton">Update Status for Part ID: 9_rsdp5</button>
 
-        <!-- Existing Notes and Photo -->
-        <div class="form-group">
-            <label for="existingNotes">Existing Notes:</label>
-            <textarea id="existingNotes" readonly></textarea>
-        </div>
-
-        <div class="form-group">
-            <label>Existing Photo:</label>
-            <img id="existingPhoto" class="preview" alt="Photo preview">
-        </div>
-
-        <!-- New Notes, Photo, and Video -->
-        <form id="ticketCompleteForm">
-            <div class="form-group">
-                <label for="newNotes">New Completion Notes:</label>
-                <textarea id="newNotes" required></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>New Completion Photo:</label>
-                <input type="file" id="newPhotoInput" accept="image/*" style="display: none;">
-                <button type="button" class="media-button" id="newPhotoButton">Upload Photo</button>
-                <img id="newPhotoPreview" class="preview" alt="New photo preview">
-            </div>
-
-            <div class="form-group">
-                <label>New Completion Video:</label>
-                <input type="file" id="newVideoInput" accept="video/*" style="display: none;">
-                <button type="button" class="media-button" id="newVideoButton">Upload Video</button>
-                <video id="newVideoPreview" class="preview" controls></video>
-            </div>
-
-            <div class="loading">Processing...</div>
-            <button type="submit" class="submit-button">Submit</button>
-        </form>
-    </div>
+    <h2>Response:</h2>
+    <pre id="responseOutput">Click a button to see the result...</pre>
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbyg8lCbqvnwdOmIHGZSWJCBsXbta1McPyBtI-6OYtHmPzA0dwFEWIFUNAMAicZKTIrfUg/exec";
-        let items = []; // Store fetched sheet data
-        let selectedItem = null;
 
-        // Fetch data from the sheet
-        async function fetchItems() {
+        const responseOutput = document.getElementById('responseOutput');
+        const fetchDataButton = document.getElementById('fetchDataButton');
+        const postDataButton = document.getElementById('postDataButton');
+
+        // Fetch all data
+        fetchDataButton.addEventListener('click', async () => {
+            responseOutput.textContent = "Fetching data...";
             try {
                 const response = await fetch(`${API_URL}?action=getAllData`);
                 const result = await response.json();
 
-                if (result.status === "success" && result.data) {
-                    items = result.data;
-                    populateDropdown(items);
+                if (result.status === "success") {
+                    responseOutput.textContent = JSON.stringify(result.data, null, 2);
                 } else {
-                    throw new Error("Failed to fetch items");
+                    throw new Error("Failed to fetch data");
                 }
             } catch (error) {
-                alert("Error fetching data.");
-                console.error(error);
+                responseOutput.textContent = `Error: ${error.message}`;
             }
-        }
+        });
 
-        // Populate dropdown
-        function populateDropdown(data) {
-            const itemSelect = document.getElementById("itemSelect");
-            itemSelect.innerHTML = '<option value="">Select an item</option>';
-
-            data.forEach((item, index) => {
-                const option = document.createElement("option");
-                option.value = index;
-                option.textContent = `${item["Location"]} - ${item["Part Name"]} (${item["Status"]})`;
-
-                if (item["Status"].toLowerCase() === "complete") {
-                    option.disabled = true;
-                    option.className = "disabled-option";
-                }
-
-                itemSelect.appendChild(option);
-            });
-
-            itemSelect.addEventListener("change", (e) => {
-                const selectedIndex = e.target.value;
-                if (selectedIndex) {
-                    selectedItem = items[selectedIndex];
-                    showItemDetails(selectedItem);
-                } else {
-                    resetForm();
-                }
-            });
-        }
-
-        // Display selected item details
-        function showItemDetails(item) {
-            document.getElementById("existingNotes").value = item["Notes"] || "No notes available.";
-            const photoPreview = document.getElementById("existingPhoto");
-
-            if (item["Photo Link"]) {
-                photoPreview.src = item["Photo Link"];
-                photoPreview.style.display = "block";
-            } else {
-                photoPreview.style.display = "none";
-            }
-        }
-
-        // Reset the form
-        function resetForm() {
-            document.getElementById("existingNotes").value = "";
-            document.getElementById("existingPhoto").style.display = "none";
-            document.getElementById("newNotes").value = "";
-            document.getElementById("newPhotoPreview").style.display = "none";
-            document.getElementById("newVideoPreview").style.display = "none";
-        }
-
-        // Form submission
-        document.getElementById("ticketCompleteForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-
-            if (!selectedItem) {
-                alert("Please select an item to update.");
-                return;
-            }
-
-            const loading = document.querySelector(".loading");
-            loading.style.display = "block";
-
+        // Post data to update "Status" column
+        postDataButton.addEventListener('click', async () => {
+            responseOutput.textContent = "Posting data...";
             try {
                 const payload = {
-                    partId: selectedItem["Part ID"],
-                    status: "Awaiting Approval",
-                    newNotes: document.getElementById("newNotes").value,
-                    photo: null,
-                    video: null,
+                    partId: "9_rsdp5",
+                    columnName: "Status",
+                    newValue: "Needs Approval"
                 };
 
-                const photoFile = document.getElementById("newPhotoInput").files[0];
-                if (photoFile) {
-                    payload.photo = await blobToBase64(photoFile);
-                }
-
-                const videoFile = document.getElementById("newVideoInput").files[0];
-                if (videoFile) {
-                    payload.video = await blobToBase64(videoFile);
-                }
-
-                await fetch(API_URL, {
+                const response = await fetch(API_URL, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
                 });
 
-                alert("Item updated successfully!");
-                fetchItems(); // Refresh data
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    responseOutput.textContent = `Update successful: ${JSON.stringify(result, null, 2)}`;
+                } else {
+                    throw new Error("Failed to update status");
+                }
             } catch (error) {
-                alert("Failed to submit data.");
-                console.error(error);
-            } finally {
-                loading.style.display = "none";
-            }
-        });
-
-        // Helper to convert blob to Base64
-        async function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(",")[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        }
-
-        // Initialize the app
-        fetchItems();
-
-        // Upload buttons for photo and video
-        document.getElementById("newPhotoButton").addEventListener("click", () => {
-            document.getElementById("newPhotoInput").click();
-        });
-
-        document.getElementById("newPhotoInput").addEventListener("change", (e) => {
-            const photoFile = e.target.files[0];
-            if (photoFile) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const preview = document.getElementById("newPhotoPreview");
-                    preview.src = event.target.result;
-                    preview.style.display = "block";
-                };
-                reader.readAsDataURL(photoFile);
-            }
-        });
-
-        document.getElementById("newVideoButton").addEventListener("click", () => {
-            document.getElementById("newVideoInput").click();
-        });
-
-        document.getElementById("newVideoInput").addEventListener("change", (e) => {
-            const videoFile = e.target.files[0];
-            if (videoFile) {
-                const videoPreview = document.getElementById("newVideoPreview");
-                videoPreview.src = URL.createObjectURL(videoFile);
-                videoPreview.style.display = "block";
+                responseOutput.textContent = `Error: ${error.message}`;
             }
         });
     </script>
