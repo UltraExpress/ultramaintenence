@@ -3,111 +3,566 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test App</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ULTRA WASH Ticket Closeout</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
             max-width: 800px;
-            margin: auto;
+            margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background: #13111C;
+            color: #fff;
         }
-        .button {
-            padding: 10px 20px;
-            margin: 10px;
-            border: none;
-            cursor: pointer;
-            background-color: #007BFF;
-            color: white;
-            border-radius: 5px;
+        .container {
+            background: linear-gradient(145deg, #1a1825, #252331);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            margin-bottom: 20px;
         }
-        .button:hover {
-            background-color: #0056b3;
+        h1 {
+            text-align: center;
+            background: linear-gradient(90deg, #00f2fe, #4facfe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: 24px;
+            margin-bottom: 30px;
         }
-        .response {
-            background-color: #e0e0e0;
+        .ticket-list {
+            margin-bottom: 20px;
+        }
+        .ticket-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .part-name {
+            font-weight: bold;
+            color: #4facfe;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        .status-needs-work { background-color: #ff4444; }
+        .status-in-progress { background-color: #ffbb33; }
+        .status-complete { background-color: #00C851; }
+        .notes {
+            background: rgba(255, 255, 255, 0.02);
             padding: 10px;
-            border-radius: 5px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4facfe;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            min-height: 100px;
+            resize: vertical;
+        }
+        .media-button {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            margin: 10px 0;
+            display: block;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .submit-button {
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 18px;
             margin-top: 20px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .preview {
+            width: 100%;
+            max-width: 300px;
+            display: none;
+            margin: 10px auto;
+            border-radius: 15px;
+        }
+        .timer {
+            text-align: center;
+            font-size: 24px;
+            color: #4facfe;
+            margin: 10px 0;
+            display: none;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(79, 172, 254, 0.1);
+            border-radius: 12px;
+            font-weight: bold;
+            color: #4facfe;
+        }
+        .filter-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .filter-container select {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
 <body>
-    <h1>Test App</h1>
-    <button class="button" id="getData">GET All Data</button>
-    <button class="button" id="postUpdate">POST Update Status</button>
-    <div class="response" id="response"></div>
+    <div class="container">
+        <h1>ULTRA WASH Ticket Closeout</h1>
+        
+        <div class="filter-container">
+            <select id="locationFilter">
+                <option value="">All Locations</option>
+                <option value="RIVERSIDE">RIVERSIDE</option>
+                <option value="SANTA ANA">SANTA ANA</option>
+            </select>
+            <select id="statusFilter">
+                <option value="">All Statuses</option>
+                <option value="Needs Work">Needs Work</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Complete">Complete</option>
+            </select>
+        </div>
+
+        <div id="ticketList" class="ticket-list">
+            <!-- Tickets will be populated here -->
+        </div>
+
+        <div id="closeoutForm" style="display: none;" class="container">
+            <h2 style="color: #4facfe; margin-bottom: 20px;">Closeout Form</h2>
+            <input type="hidden" id="currentPartId">
+            
+            <div class="form-group">
+                <label for="completeNotes">Completion Notes:</label>
+                <textarea id="completeNotes" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Completion Photo:</label>
+                <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
+                <button type="button" class="media-button" id="photoButton">Take Photo</button>
+                <img id="photoPreview" class="preview" alt="Photo preview">
+            </div>
+
+            <div class="form-group">
+                <label>Completion Video (30s max):</label>
+                <input type="file" id="videoInput" accept="video/*" capture="environment" style="display: none;">
+                <button type="button" class="media-button" id="videoButton">Record Video</button>
+                <div class="timer" id="videoTimer">00:30</div>
+                <video id="videoPreview" class="preview" controls></video>
+            </div>
+
+            <div class="loading">Processing...</div>
+            <button type="button" class="submit-button" onclick="submitCloseout()">Submit Closeout</button>
+        </div>
+    </div>
 
     <script>
-        const endpoint = 'https://script.google.com/macros/s/AKfycbzy9jocVrp5QvarA8NUbDwUToVxe5SqgihsDjDhgb1ZnKEPfydjC5b1K7blJnS8HiN0_w/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
+        let currentPosition = null;
+        let photoData = null;
+        let videoBlob = null;
+        let isUploading = false;
+        const MAX_RETRIES = 3;
 
-        // Utility to update the UI with response data
-        function updateUI(data) {
-            const responseDiv = document.getElementById('response');
-            responseDiv.textContent = JSON.stringify(data, null, 2);
-        }
-
-        // GET all data
-        async function getAllData() {
-            try {
-                const response = await fetch(`${endpoint}?action=getAllData`, {
-                    method: 'GET',
-                    mode: 'no-cors',
-                });
-
-                // Assuming CORS issues, we will show a placeholder
-                if (!response.ok) {
-                    updateUI({ error: 'GET Failed: Check backend' });
-                    return;
-                }
-
-                const data = await response.json();
-                updateUI(data);
-            } catch (error) {
-                console.error('GET Error:', error);
-                updateUI({ error: 'Failed to fetch data' });
-            }
-        }
-
-        // POST to update status
-        async function postUpdateStatus() {
-            const statusData = {
-                name: 'Test User',
-                location: 'SANTA ANA',
-                partId: '10_rkdp1',
-                status: 'In Progress',
-                notes: 'Testing POST update',
-                timestamp: new Date().toISOString(),
+        // Initialize geolocation
+        navigator.geolocation.getCurrentPosition(pos => {
+            currentPosition = {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude
             };
+        }, err => {
+            console.error("Location error:", err);
+        });
 
+        function generateRandomString() {
+            return '_r' + Math.random().toString(36).substring(2, 6);
+        }
+
+        async function fetchTickets() {
             try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(statusData),
-                });
-
-                // POST is no-cors, response cannot be parsed reliably
-                if (response.ok) {
-                    updateUI({ message: 'POST triggered successfully. Fetching updated data...' });
-                } else {
-                    updateUI({ error: 'POST Failed: Check backend' });
+                const response = await fetch(`${API_URL}?action=getAllData`);
+                const result = await response.json();
+                
+                if (result.status === "success" && Array.isArray(result.data)) {
+                    displayTickets(result.data);
                 }
-
-                // Immediately fetch updated data
-                await getAllData();
             } catch (error) {
-                console.error('POST Error:', error);
-                updateUI({ error: 'Failed to POST data' });
+                console.error('Error fetching tickets:', error);
+                alert('Error loading tickets. Please try again.');
             }
         }
 
-        // Attach event listeners
-        document.getElementById('getData').addEventListener('click', getAllData);
-        document.getElementById('postUpdate').addEventListener('click', postUpdateStatus);
+        function displayTickets(tickets) {
+            const locationFilter = document.getElementById('locationFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            const filteredTickets = tickets.filter(ticket => {
+                const locationMatch = !locationFilter || ticket.Location === locationFilter;
+                const statusMatch = !statusFilter || ticket.Status === statusFilter;
+                return locationMatch && statusMatch;
+            });
+
+            const ticketList = document.getElementById('ticketList');
+            ticketList.innerHTML = filteredTickets.map(ticket => `
+                <div class="ticket-item">
+                    <div class="ticket-header">
+                        <span class="part-name">${ticket['Part Name']}</span>
+                        <span class="status status-${ticket.Status.toLowerCase().replace(/\s+/g, '-')}">${ticket.Status}</span>
+                    </div>
+                    <div class="notes">
+                        <strong>Notes:</strong><br>
+                        ${ticket.Notes || 'No notes available'}
+                    </div>
+                    <button onclick="showCloseoutForm('${ticket['Part ID']}')" class="media-button">
+                        Close Ticket
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function showCloseoutForm(partId) {
+            document.getElementById('currentPartId').value = partId;
+            document.getElementById('closeoutForm').style.display = 'block';
+            document.getElementById('completeNotes').value = '';
+            document.getElementById('photoPreview').style.display = 'none';
+            document.getElementById('videoPreview').style.display = 'none';
+            photoData = null;
+            videoBlob = null;
+        }
+
+        // Photo handling
+        document.getElementById('photoButton').addEventListener('click', function() {
+            document.getElementById('photoInput').click();
+        });
+
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoData = e.target.result;
+                    document.getElementById('photoPreview').src = photoData;
+                    document.getElementById('photoPreview').style.display = 'block';
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // Video handling
+        document.getElementById('videoButton').addEventListener('click', function() {
+            document.getElementById('videoInput').click();
+        });
+
+        document.getElementById('videoInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                videoBlob = file;
+                const videoUrl = URL.createObjectURL(file);
+                document.getElementById('videoPreview').src = videoUrl;
+                document.getElementById('videoPreview').style.display = 'block';
+                
+                let timeLeft = 30;
+                document.getElementById('videoTimer').style.display = 'block';
+                const timerInterval = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('videoTimer').textContent = 
+                        `00:${timeLeft.toString().padStart(2, '0')}`;
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        document.getElementById('videoTimer').style.display = 'none';
+                    }
+                }, 1000);
+            }
+        });
+
+        async function compressVideo(videoBlob) {
+            if (!('VideoEncoder' in window)) {
+                console.warn('VideoEncoder not supported - using original video');
+                return videoBlob;
+            }
+
+            try {
+                const videoElement = document.createElement('video');
+                videoElement.src = URL.createObjectURL(videoBlob);
+                await videoElement.play();
+                videoElement.pause();
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = Math.min(640, videoElement.videoWidth);
+                canvas.height = (canvas.width / videoElement.videoWidth) * videoElement.videoHeight;
+
+                const stream = canvas.captureStream();
+                const mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm',
+                    videoBitsPerSecond: 1000000
+                });
+
+                const chunks = [];
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.start();
+
+                const fps = 30;
+                const totalFrames = videoElement.duration * fps;
+                const frameInterval = 1000 / fps;
+
+                for (let i = 0; i < totalFrames; i++) {
+                    videoElement.currentTime = i * (1 / fps);
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                }
+
+                mediaRecorder.stop();
+                await new Promise(resolve => {
+                    mediaRecorder.onstop = () => {
+                        resolve(chunks[0]);
+                    };
+                });
+
+                return chunks[0];
+            } catch (error) {
+                console.warn('Video compression failed:', error);
+                return videoBlob;
+            }
+        }
+
+        async function checkVideoDuration(videoBlob) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.onloadedmetadata = function() {
+                    window.URL.revokeObjectURL(video.src);
+                    resolve(video.duration);
+                };
+                video.src = URL.createObjectURL(videoBlob);
+                };
+            });
+        }
+
+        async function compressImage(base64String) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = base64String;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    let width = img.width;
+                    let height = img.height;
+                    const maxSize = 800;
+                    
+                    if (width > height && width > maxSize) {
+                        height = (height * maxSize) / width;
+                        width = maxSize;
+                    } else if (height > maxSize) {
+                        width = (width * maxSize) / height;
+                        height = maxSize;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            });
+        }
+
+        async function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // Filter event listeners
+        document.getElementById('locationFilter').addEventListener('change', () => fetchTickets());
+        document.getElementById('statusFilter').addEventListener('change', () => fetchTickets());
+
+        // Page leave warning
+        window.addEventListener('beforeunload', function(e) {
+            if (isUploading) {
+                e.preventDefault();
+                e.returnValue = 'Upload in progress - leaving this page will cancel the upload. Are you sure?';
+                return e.returnValue;
+            }
+        });
+
+        async function submitCloseout() {
+            const partId = document.getElementById('currentPartId').value;
+            const completeNotes = document.getElementById('completeNotes').value;
+            
+            if (!completeNotes.trim()) {
+                alert('Please enter completion notes');
+                return;
+            }
+
+            const loading = document.querySelector('.loading');
+            loading.style.display = 'block';
+            isUploading = true;
+            loading.textContent = 'Starting upload... Please don\'t leave page or take phone calls during upload.';
+
+            try {
+                // Check video duration if exists
+                if (videoBlob) {
+                    videoBlob = await compressVideo(videoBlob);
+                    const duration = await checkVideoDuration(videoBlob);
+                    if (duration > 30) {
+                        alert('Video must be 30 seconds or less. Please record a shorter video.');
+                        loading.style.display = 'none';
+                        isUploading = false;
+                        return;
+                    }
+                }
+
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('partId', partId);
+                formData.append('completeNotes', completeNotes);
+                formData.append('status', 'Awaiting Approval');
+                formData.append('timestamp', new Date().toISOString());
+
+                // Handle photo compression and upload
+                if (photoData) {
+                    const compressedPhoto = await compressImage(photoData);
+                    formData.append('completePhoto', compressedPhoto.split(',')[1] || compressedPhoto);
+                }
+
+                // Handle video
+                if (videoBlob) {
+                    const videoBase64 = await blobToBase64(videoBlob);
+                    formData.append('completeVideo', videoBase64.split(',')[1] || videoBase64);
+                }
+
+                // Convert FormData to object for chunking
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    data[key] = value;
+                }
+
+                // Split into chunks
+                const chunks = [];
+                const chunkSize = 30000;
+                const serializedData = JSON.stringify(data);
+                
+                for (let i = 0; i < serializedData.length; i += chunkSize) {
+                    chunks.push(serializedData.slice(i, i + chunkSize));
+                }
+
+                // Send chunks with retry logic
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunkData = {
+                        chunk: chunks[i],
+                        index: i,
+                        total: chunks.length,
+                        isLast: i === chunks.length - 1
+                    };
+
+                    let retryCount = 0;
+                    while (retryCount < MAX_RETRIES) {
+                        try {
+                            const response = await fetch(API_URL, {
+                                method: 'POST',
+                                mode: 'no-cors',
+                                headers: {
+                                    'Content-Type': 'text/plain',
+                                },
+                                body: JSON.stringify(chunkData)
+                            });
+
+                            if (response) {
+                                const uploadProgress = Math.round(((i + 1) / chunks.length) * 100);
+                                loading.textContent = `Uploading... ${uploadProgress}%`;
+                                break;
+                            }
+                            throw new Error('Upload failed');
+                        } catch (error) {
+                            retryCount++;
+                            if (retryCount === MAX_RETRIES) {
+                                throw new Error(`Failed to upload chunk ${i + 1}/${chunks.length} after ${MAX_RETRIES} attempts`);
+                            }
+                            loading.textContent = `Retry ${retryCount}/${MAX_RETRIES}...`;
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        }
+                    }
+                }
+
+                // Success handling
+                isUploading = false;
+                loading.textContent = 'Closeout submitted successfully!';
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                    document.getElementById('closeoutForm').style.display = 'none';
+                    document.getElementById('completeNotes').value = '';
+                    document.getElementById('photoPreview').style.display = 'none';
+                    document.getElementById('videoPreview').style.display = 'none';
+                    photoData = null;
+                    videoBlob = null;
+                    fetchTickets(); // Refresh the ticket list
+                }, 2000);
+
+            } catch (error) {
+                isUploading = false;
+                console.error("Submission error:", error);
+                loading.textContent = 'Error submitting closeout. Please try again.';
+                setTimeout(() => loading.style.display = 'none', 3000);
+            }
+        }
+
+        // Initial load
+        fetchTickets();
     </script>
 </body>
 </html>
