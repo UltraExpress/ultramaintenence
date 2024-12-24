@@ -48,7 +48,7 @@
 </head>
 <body>
     <div class="container">
-        <h2>Complete Notes Update Test - v1.5</h2>
+        <h2>Complete Notes Update Test - v1.6</h2>
         
         <div>
             <label>Select Part ID:</label>
@@ -69,21 +69,30 @@
     </div>
 
     <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec';
+        
         async function submitNoteUpdate() {
             const statusDiv = document.getElementById('statusMsg');
             statusDiv.style.display = 'block';
             statusDiv.textContent = 'Submitting...';
 
-            const partId = document.getElementById('partId').value;
-            const notes = document.getElementById('completeNotes').value;
-
-            // Build URL exactly like maintenance app
-            const url = `https://script.google.com/macros/s/AKfycbzL9ffrICvYzdGEnDoj_DV2zoJZQC2wPigydwaG4MZLwAboOwPGBC3BJFsVFn8qt8x0Ww/exec?action=updateStatus&partId=${partId}&columnName=Complete Notes&newValue=${encodeURIComponent(notes)}`;
+            const data = {
+                action: 'updateStatus',
+                partId: document.getElementById('partId').value,
+                columnName: 'Complete Notes',
+                newValue: document.getElementById('completeNotes').value
+            };
 
             try {
-                console.log('Sending update to:', url);
-                const response = await fetch(url, {
-                    method: 'GET'  // Maintenance app uses GET with URL parameters
+                console.log('Sending data:', data);
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',  // Important for Google Apps Script
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify(data)
                 });
 
                 statusDiv.textContent = 'Update sent! Check sheet.';
